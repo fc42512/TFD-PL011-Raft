@@ -5,7 +5,7 @@
  */
 package client;
 
-import common.Request;
+import common.Message;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -19,54 +19,72 @@ import java.util.Random;
 public class ClientRequest implements Runnable {
 
     private Client client;
-    private Request request;
-    private boolean requestTreated;
+    private Message request;
+    private boolean finishedRequest;
+    private String serverContacted;
 
-    public ClientRequest(Client c, Request r) {
+    public ClientRequest(Client c, Message r) {
         this.client = c;
         this.request = r;
-        this.requestTreated=false;
+        this.finishedRequest = false;
     }
 
     @Override
     public void run() {
-
-        while (requestTreated) {
-            
-         
-            client.setResponse(request(request, getServerPort(getRandomServer())));   
+        while (!finishedRequest) {
+            if (client.getLeaderID() != null) {
+                serverContacted = client.getLeaderID();
+                request(request, getServerPort(client.getLeaderID()));
+            } else {
+                serverContacted = getRandomServer();
+                request(request, getServerPort(serverContacted));
+            }
         }
-
-        
     }
 
-    private Request request(Request r, int port) {
-        Request response = null;
+    private void request(Message r, int port) {
+        Message response = null;
 
         try {
             Socket socket = new Socket("localhost", port);
             ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
             oos.writeObject(r);
             oos.flush();
+            
 
             ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
-            response = (Request) ois.readObject();
+            response = (Message) ois.readObject();
+            processResponse(response);
+
         } catch (IOException ex) {
             System.err.println("Erro IO \n" + ex.getLocalizedMessage());
 
         } catch (ClassNotFoundException ex) {
             System.err.println("Erro na conversão da classe \n" + ex.getLocalizedMessage());
         }
-        return response;
     }
 
-    private int getServerPort(int serverID) {
-        return Integer.parseInt(client.getProps().getServerAdress("srv" + serverID)[1]);
+    private void processResponse(Message response) {
+        if (response != null) {
+            if (response.getMessageType().equals("REJECT")) {
+                client.setLeaderID(response.getContent());
+                finishedRequest = false; 
+            }
+            else if (response.getMessageType().equals("RESPONSE")){
+                client.setResponse(response);
+                client.setLeaderID(serverContacted);
+                finishedRequest = true;
+            }
+        }
     }
 
-    private int getRandomServer() {
+    private int getServerPort(String serverID) {
+        return Integer.parseInt(client.getProps().getServerAdress(serverID)[1]);
+    }
+
+    private String getRandomServer() {
         Random rnd = new Random();
-        return rnd.nextInt(4);
+        return "srv" + rnd.nextInt(3);
 
     }
 }

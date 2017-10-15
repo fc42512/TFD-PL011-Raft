@@ -18,14 +18,16 @@ public class StartRaftApplication {
 
     private static HashMap<String, Thread> servidores;
     private static HashMap<Integer, Thread> clientes;
-    private static PropertiesManager props;
+    private static PropertiesManager serversProps;
+    private static PropertiesManager clientsProps;
 
     public static void main(String[] args) {
 
         Scanner sc = new Scanner(System.in);
         servidores = new HashMap<>();
         clientes = new HashMap<>();
-        props = new PropertiesManager();
+        serversProps = new PropertiesManager("servidor");
+        clientsProps = new PropertiesManager("cliente");
 
         while (true) {
             System.out.println("Qual a operação que pretende executar?\n"
@@ -59,8 +61,7 @@ public class StartRaftApplication {
     /* Iniciar Servidor */
     public static void startServer(int id) {
         String serverID = "srv" + id;
-        int serverPort = Integer.parseInt(props.getServerAdress(serverID)[1]);
-        Thread serverThread = new Thread(new Server(serverID, serverPort));
+        Thread serverThread = new Thread(new Server(serverID, serversProps, clientsProps));
         serverThread.start();
         servidores.put(serverID, serverThread);
 
@@ -73,7 +74,7 @@ public class StartRaftApplication {
 
     /* Iniciar Clientes */
     public static void startClient(int id) {
-        Thread clientThread = new Thread(new Client(id, props));
+        Thread clientThread = new Thread(new Client(id, clientsProps));
         clientThread.start();
         clientes.put(id, clientThread);
 

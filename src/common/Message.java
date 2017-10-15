@@ -11,15 +11,15 @@ import java.io.Serializable;
  *
  * @author João
  */
-public class Request implements Serializable {
+public class Message implements Serializable {
 
     private String id;
-    private String operationType;
+    private String messageType;
     private String content;
 
-    public Request(String id, String operationType, String content) {
+    public Message(String id, String messageType, String content) {
         this.id = id;
-        this.operationType = operationType;
+        this.messageType = messageType;
         this.content = content;
     }
 
@@ -31,12 +31,12 @@ public class Request implements Serializable {
         this.id = id;
     }
 
-    public String getOperationType() {
-        return operationType;
+    public String getMessageType() {
+        return messageType;
     }
 
-    public void setOperationType(String operationType) {
-        this.operationType = operationType;
+    public void setMessageType(String messageType) {
+        this.messageType = messageType;
     }
 
     public String getContent() {
@@ -49,10 +49,10 @@ public class Request implements Serializable {
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof Request) || obj == null) {
+        if (!(obj instanceof Message) || obj == null) {
             return false;
         }
-        Request r = (Request) obj;
+        Message r = (Message) obj;
         return  this.id.equals(r.getId());
     }
 

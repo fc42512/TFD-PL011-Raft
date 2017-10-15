@@ -15,15 +15,21 @@ import java.util.Properties;
 
 public class PropertiesManager {
 
-    private static final String SERVER_PROPERTIES = "config.properties";
+    private static final String CLIENT_TO_SERVER_PROPERTIES = "client_config.properties";
+    private static final String SERVER__TO_SERVER_PROPERTIES = "server_config.properties";
     private Properties props;
     
-    public PropertiesManager () {
+    public PropertiesManager (String type) {
         props = new Properties();
-        props = loadProps(SERVER_PROPERTIES);
+        if(type.equals("servidor")){
+            loadProps(SERVER__TO_SERVER_PROPERTIES);
+        }
+        else{
+            loadProps(CLIENT_TO_SERVER_PROPERTIES);
+        }  
     }
 
-    private Properties loadProps(String filename) {
+    private void loadProps(String filename) {
         InputStream is = null;
         try {
             is = new FileInputStream(filename);
@@ -38,7 +44,6 @@ public class PropertiesManager {
             props = null;
             System.err.println("Erro IO \n" + ex.getLocalizedMessage());
         }
-        return props;
     }
     
     public String [] getServerAdress (String serverID){

@@ -5,12 +5,10 @@
  */
 package server;
 
-import common.Request;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.ServerSocket;
-import java.net.Socket;
+import common.Message;
+import common.PropertiesManager;
+import java.util.concurrent.LinkedBlockingQueue;
+
 
 /**
  *
@@ -19,52 +17,72 @@ import java.net.Socket;
 public class Server implements Runnable {
     
     private String serverID;
-    private int port;
+    private String leaderID;
+    private PropertiesManager serversProps;
+    private PropertiesManager clientsProps;
     private String state;
-    private static int ID_MESSAGE;
     
-    public Server(String id, int port){
+    private LinkedBlockingQueue<Message> clientQueue;
+    private LinkedBlockingQueue<Message> serverQueue;
+
+    
+    public Server(String id, PropertiesManager serversProps, PropertiesManager clientsProps){
         this.serverID = id;
-        this.port = port;
-        this.ID_MESSAGE = 0;
+        this.leaderID = "srv0";
+        this.serversProps = serversProps;
+        this.clientsProps = clientsProps;
+        clientQueue = new LinkedBlockingQueue<>();
+        serverQueue = new LinkedBlockingQueue<>();
+        System.out.println("O servidor " + serverID + " arrancou!");
     }
 
 
     @Override
     public void run() {
-        try {
-            System.out.println("O servidor " + serverID + " arrancou!");
-            ServerSocket serverSocket = new ServerSocket(port);
+
+            
+
             
             /*Set State to Server */
             if(Integer.parseInt(serverID.substring(3)) == 0){
-                state = "Leader";
+                state = "LEADER";
             }
             else{
-                state = "Follower";
+                state = "FOLLOWER";
             }
+            new Thread(new ProcessClients(this)).start();
             
+ 
+        
+    }
 
-            while (true) {
-                Socket clienteSocket = serverSocket.accept();
-                
-                ObjectInputStream dis = new ObjectInputStream(clienteSocket.getInputStream());
-                Request request = (Request) dis.readObject();
-                request.setContent("Sucesso - atríbuído o ID Mensagem " + ID_MESSAGE);
-                ID_MESSAGE++;
-                
-                ObjectOutputStream dos = new ObjectOutputStream(clienteSocket.getOutputStream());
-                dos.writeObject(request);
-            }
-        }
-        catch (IOException ex) {
-            System.err.println("Erro IO \n" + ex.getLocalizedMessage());
-        } 
-        catch (ClassNotFoundException ex) {
-            System.err.println("Erro na conversão da classe \n" + ex.getLocalizedMessage());
-        }
+    public String getServerID() {
+        return serverID;
+    }
+
+    public String getLeaderID() {
+        return leaderID;
     }
     
+    public PropertiesManager getServersProps() {
+        return serversProps;
+    }
+
+    public PropertiesManager getClientsProps() {
+        return clientsProps;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public LinkedBlockingQueue<Message> getClientQueue() {
+        return clientQueue;
+    }
+
+    public LinkedBlockingQueue<Message> getServerQueue() {
+        return serverQueue;
+    }
 
 }
 
