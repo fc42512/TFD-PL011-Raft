@@ -5,6 +5,7 @@
  */
 package client;
 
+import common.Request;
 import java.util.Random;
 
 /**

@@ -5,7 +5,7 @@
  */
 package server;
 
-import client.Request;
+import common.Request;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -18,19 +18,31 @@ import java.net.Socket;
  */
 public class Server implements Runnable {
     
-    private static int ID_MESSAGE;
+    private String serverID;
     private int port;
+    private String state;
+    private static int ID_MESSAGE;
     
-    public Server(int port){
-        this.ID_MESSAGE = 0;
+    public Server(String id, int port){
+        this.serverID = id;
         this.port = port;
+        this.ID_MESSAGE = 0;
     }
 
 
     @Override
     public void run() {
         try {
+            System.out.println("O servidor " + serverID + " arrancou!");
             ServerSocket serverSocket = new ServerSocket(port);
+            
+            /*Set State to Server */
+            if(Integer.parseInt(serverID.substring(3)) == 0){
+                state = "Leader";
+            }
+            else{
+                state = "Follower";
+            }
             
 
             while (true) {
@@ -52,5 +64,7 @@ public class Server implements Runnable {
             System.err.println("Erro na conversão da classe \n" + ex.getLocalizedMessage());
         }
     }
+    
+
 }
 
