@@ -5,7 +5,9 @@
  */
 package client;
 
+import common.PropertiesManager;
 import common.Request;
+import java.util.Properties;
 import java.util.Random;
 
 /**
@@ -15,21 +17,25 @@ import java.util.Random;
 public class Client implements Runnable {
 
     private int id;
+    private PropertiesManager props;
     private int requestID;
     private Request request;
     private Request response;
-
-    public Client(int id) {
+    
+    public Client(int id, PropertiesManager props) {
         this.id = id;
         requestID = 0;
         response = null;
         System.out.println("O cliente " + id + " arrancou!");
+        this.props = props;
 
     }
 
     @Override
     public void run() {
         Random rnd = new Random();
+        
+        
         int coeficient;
         while (true) {
             if(response == null){
@@ -60,5 +66,10 @@ public class Client implements Runnable {
         this.response = response;
         System.out.println(response.getId() + " " + response.getContent());
     }
+
+    public PropertiesManager getProps() {
+        return props;
+    }
+          
 
 }
