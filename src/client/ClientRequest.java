@@ -34,7 +34,7 @@ public class ClientRequest implements Runnable {
     private Request request(Request r) {
         Request response = null;
         try {
-            Socket socket = new Socket("localhost", 233);
+            Socket socket = new Socket("localhost", 4320);
             ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
             oos.writeObject(r);
             oos.flush();

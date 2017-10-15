@@ -19,16 +19,18 @@ import java.net.Socket;
 public class Server implements Runnable {
     
     private static int ID_MESSAGE;
+    private int port;
     
-    public Server(){
+    public Server(int port){
         this.ID_MESSAGE = 0;
+        this.port = port;
     }
 
 
     @Override
     public void run() {
         try {
-            ServerSocket serverSocket = new ServerSocket(233);
+            ServerSocket serverSocket = new ServerSocket(port);
             
 
             while (true) {

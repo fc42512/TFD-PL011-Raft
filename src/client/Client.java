@@ -42,8 +42,8 @@ public class Client implements Runnable {
             new Thread(new ClientRequest(this, request)).start();
 
             try {
-                coeficient = rnd.nextInt(9)+1;
-                Thread.sleep(coeficient * 5000);
+                coeficient = rnd.nextInt(2)+1;
+                Thread.sleep(coeficient * 2000);
             } 
             catch (InterruptedException ex) {
                 

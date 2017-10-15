@@ -1,6 +1,12 @@
 
 import client.Client;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Properties;
 import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import server.Server;
 
 /*
@@ -22,12 +28,23 @@ public class StartRaftApplication {
     public static void main(String[] args) {
         
         Scanner sc = new Scanner(System.in);
+        Properties prop = new Properties();
+        try {
+            prop.load(new FileInputStream("config.properties"));
+        } 
+        catch (FileNotFoundException ex) {
+            System.err.println("O ficheiro de propriedades não existe \n" + ex.getLocalizedMessage());
+        } 
+        catch (IOException ex) {
+            System.err.println("Erro IO \n" + ex.getLocalizedMessage());
+        }
         
         /* Iniciar Servidores */
         System.out.println("Introduza o número de servidores: ");
         int numServers = sc.nextInt();
         for(int i=0; i < numServers; i++){
-            new Thread(new Server()).start();
+            String [] hostAdress = prop.getProperty(String.valueOf(i)).split(":");
+            new Thread(new Server(Integer.parseInt(hostAdress[1]))).start();
             
         }
         

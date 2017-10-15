@@ -12,7 +12,7 @@ import java.io.Serializable;
  * @author João
  */
 public class Request implements Serializable {
-    
+
     private String id;
     private String operationType;
     private String content;
@@ -46,6 +46,14 @@ public class Request implements Serializable {
     public void setContent(String content) {
         this.content = content;
     }
-    
-    
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Request) || obj == null) {
+            return false;
+        }
+        Request r = (Request) obj;
+        return  this.id.equals(r.getId());
+    }
+
 }
