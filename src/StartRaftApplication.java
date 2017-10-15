@@ -73,7 +73,7 @@ public class StartRaftApplication {
 
     /* Iniciar Clientes */
     public static void startClient(int id) {
-        Thread clientThread = new Thread(new Client(id));
+        Thread clientThread = new Thread(new Client(id, props));
         clientThread.start();
         clientes.put(id, clientThread);
 
