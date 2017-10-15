@@ -53,6 +53,8 @@ public class Client implements Runnable {
         }
 
     }
+    
+    
 
     public void setResponse(Request response) {
         this.response = response;
