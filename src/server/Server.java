@@ -7,6 +7,8 @@ package server;
 
 import common.Message;
 import common.PropertiesManager;
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.concurrent.LinkedBlockingQueue;
 
 
@@ -20,6 +22,7 @@ public class Server implements Runnable {
     private String leaderID;
     private PropertiesManager serversProps;
     private PropertiesManager clientsProps;
+    private int ID_MESSAGE = 0;
     private String state;
     
     private LinkedBlockingQueue<Message> clientQueue;
@@ -40,9 +43,7 @@ public class Server implements Runnable {
     @Override
     public void run() {
 
-            
-
-            
+                      
             /*Set State to Server */
             if(Integer.parseInt(serverID.substring(3)) == 0){
                 state = "LEADER";
@@ -50,11 +51,25 @@ public class Server implements Runnable {
             else{
                 state = "FOLLOWER";
             }
-            new Thread(new ProcessClients(this)).start();
             
- 
-        
+            
+            /* Criar Socket para escutar os clientes */
+        try {
+            ServerSocket socketForClients = new ServerSocket(Integer.parseInt(clientsProps.getServerAdress(serverID)[1]));
+            socketForClients.setReuseAddress(true);
+
+            /* Processar os pedidos dos clientes */
+            while (true) {
+                new Thread(new ProcessClient(this, socketForClients.accept())).start();
+                
+            }
+        } 
+        catch (IOException ex) {
+            System.err.println("O servidor " + serverID + " não consegue ativar a sua ligação \n" + ex.getLocalizedMessage());
+        }
     }
+            
+
 
     public String getServerID() {
         return serverID;
@@ -63,14 +78,15 @@ public class Server implements Runnable {
     public String getLeaderID() {
         return leaderID;
     }
+
+    public int getIDMESSAGE() {
+        return ID_MESSAGE;
+    }
     
-    public PropertiesManager getServersProps() {
-        return serversProps;
+    public void incrementIDMessage() {
+        ID_MESSAGE++;
     }
 
-    public PropertiesManager getClientsProps() {
-        return clientsProps;
-    }
 
     public String getState() {
         return state;

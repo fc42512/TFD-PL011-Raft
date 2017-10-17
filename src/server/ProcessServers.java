@@ -15,50 +15,50 @@ import java.net.Socket;
 
 /**
  *
- * @author João
+ * @author João 
  */
-public class ProcessServers implements Runnable {
-
-    private Server server;
-    private ServerSocket socketForServers;
-    private Socket serverSocket;
-
-    @Override
-    public void run() {
-
-        /* Criar Socket para escutar os servidores */
-        try {
-            socketForServers = new ServerSocket(Integer.parseInt(server.getServersProps().getServerAdress(server.getServerID())[1]));
-            socketForServers.setReuseAddress(true);
-
-            /* Processar os mensagens dos servidores */
-            while (true) {
-                serverSocket = socketForServers.accept();
-                ObjectInputStream dis = new ObjectInputStream(serverSocket.getInputStream());
-                Message message = (Message) dis.readObject();
-                processMessageFromServer(message);//executa o método que processa a mensagem
-
-
-            }
-
-        } catch (IOException ex) {
-            System.err.println("Erro no estabelecimento da ligação com o cliente \n" + ex.getLocalizedMessage());
-        } catch (ClassNotFoundException ex) {
-            System.err.println("Erro na conversão da classe Request\n" + ex.getLocalizedMessage());
-        }
-    }
-
-    public void sendMessageToServer(Message m, Socket s) throws IOException {
-        BufferedOutputStream bos = new BufferedOutputStream(s.getOutputStream());
-        ObjectOutputStream osw = new ObjectOutputStream(bos);
-        osw.writeObject(m);//Envia a mensagem
-        osw.flush();
-        osw.close();
-        bos.close();
-        s.close();//Fecha a ligação
-    }
-    
-    private void processMessageFromServer(Message m){
-        
-    }
-}
+//public class ProcessServers implements Runnable {
+//
+//    private Server server;
+//    private ServerSocket socketForServers;
+//    private Socket serverSocket;
+//
+//    @Override
+//    public void run() {
+//
+//        /* Criar Socket para escutar os servidores */
+//        try {
+//            socketForServers = new ServerSocket(Integer.parseInt(server.getServersProps().getServerAdress(server.getServerID())[1]));
+//            socketForServers.setReuseAddress(true);
+//
+//            /* Processar os mensagens dos servidores */
+//            while (true) {
+//                serverSocket = socketForServers.accept();
+//                ObjectInputStream dis = new ObjectInputStream(serverSocket.getInputStream());
+//                Message message = (Message) dis.readObject();
+//                processMessageFromServer(message);//executa o método que processa a mensagem
+//
+//
+//            }
+//
+//        } catch (IOException ex) {
+//            System.err.println("Erro no estabelecimento da ligação com o cliente \n" + ex.getLocalizedMessage());
+//        } catch (ClassNotFoundException ex) {
+//            System.err.println("Erro na conversão da classe Request\n" + ex.getLocalizedMessage());
+//        }
+//    }
+//
+//    public void sendMessageToServer(Message m, Socket s) throws IOException {
+//        BufferedOutputStream bos = new BufferedOutputStream(s.getOutputStream());
+//        ObjectOutputStream osw = new ObjectOutputStream(bos);
+//        osw.writeObject(m);//Envia a mensagem
+//        osw.flush();
+//        osw.close();
+//        bos.close();
+//        s.close();//Fecha a ligação
+//    }
+//    
+//    private void processMessageFromServer(Message m){
+//        
+//    }
+//}

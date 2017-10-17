@@ -10,54 +10,36 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.Random;
 
 /**
  *
  * @author João
  */
-public class ClientRequest implements Runnable {
+public class ClientRequest {
 
     private Client client;
-    private Message request;
-    private boolean finishedRequest;
-    private String serverContacted;
+    private boolean isFinishedRequest;
+    private boolean isWrongLeader;
 
-    public ClientRequest(Client c, Message r) {
+    public ClientRequest(Client c) {
         this.client = c;
-        this.request = r;
-        this.finishedRequest = false;
+        this.isFinishedRequest = false;
+        this.isWrongLeader = false;
     }
 
-    @Override
-    public void run() {
-        while (!finishedRequest) {
-            if (client.getLeaderID() != null) {
-                serverContacted = client.getLeaderID();
-                request(request, getServerPort(client.getLeaderID()));
-            } else {
-                serverContacted = getRandomServer();
-                request(request, getServerPort(serverContacted));
-            }
-        }
-    }
-
-    private void request(Message r, int port) {
+    public void request(Message m, Socket socket) {
         Message response = null;
-
         try {
-            Socket socket = new Socket("localhost", port);
             ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
-            oos.writeObject(r);
+            oos.writeObject(m);
             oos.flush();
             
-
             ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
             response = (Message) ois.readObject();
             processResponse(response);
 
         } catch (IOException ex) {
-            System.err.println("Erro IO \n" + ex.getLocalizedMessage());
+            System.err.println("O servidor contactado pelo cliente " + client.getId() + " deu erro na leitura/escrita!" + ex.getLocalizedMessage());
 
         } catch (ClassNotFoundException ex) {
             System.err.println("Erro na conversão da classe \n" + ex.getLocalizedMessage());
@@ -68,23 +50,23 @@ public class ClientRequest implements Runnable {
         if (response != null) {
             if (response.getMessageType().equals("REJECT")) {
                 client.setLeaderID(response.getContent());
-                finishedRequest = false; 
+                isFinishedRequest = false; 
             }
             else if (response.getMessageType().equals("RESPONSE")){
                 client.setResponse(response);
-                client.setLeaderID(serverContacted);
-                finishedRequest = true;
+                isFinishedRequest = true;
+                isWrongLeader = true;
             }
         }
     }
 
-    private int getServerPort(String serverID) {
-        return Integer.parseInt(client.getProps().getServerAdress(serverID)[1]);
+    public boolean isFinishedRequest() {
+        return isFinishedRequest;
     }
 
-    private String getRandomServer() {
-        Random rnd = new Random();
-        return "srv" + rnd.nextInt(3);
-
+    public boolean isWrongLeader() {
+        return isWrongLeader;
     }
+    
+    
 }
