@@ -28,9 +28,9 @@ public class Client implements Runnable {
     public Client(int id, PropertiesManager props) {
         this.id = id;
         this.props = props;
-        ID_REQUEST = 0;
-        leaderID = null;
-        response = null;
+        this.ID_REQUEST = 0;
+        this.leaderID = null;
+        this.response = null;
         
         System.out.println("O cliente " + id + " arrancou!");
         

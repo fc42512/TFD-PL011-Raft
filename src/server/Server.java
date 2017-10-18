@@ -11,25 +11,23 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.concurrent.LinkedBlockingQueue;
 
-
 /**
  *
  * @author João
  */
 public class Server implements Runnable {
-    
+
     private String serverID;
     private String leaderID;
     private PropertiesManager serversProps;
     private PropertiesManager clientsProps;
     private int ID_MESSAGE = 0;
     private String state;
-    
+
     private LinkedBlockingQueue<Message> clientQueue;
     private LinkedBlockingQueue<Message> serverQueue;
 
-    
-    public Server(String id, PropertiesManager serversProps, PropertiesManager clientsProps){
+    public Server(String id, PropertiesManager serversProps, PropertiesManager clientsProps) {
         this.serverID = id;
         this.leaderID = "srv0";
         this.serversProps = serversProps;
@@ -39,37 +37,45 @@ public class Server implements Runnable {
         System.out.println("O servidor " + serverID + " arrancou!");
     }
 
-
     @Override
     public void run() {
 
-                      
-            /*Set State to Server */
-            if(Integer.parseInt(serverID.substring(3)) == 0){
-                state = "LEADER";
-            }
-            else{
-                state = "FOLLOWER";
-            }
-            
-            
-            /* Criar Socket para escutar os clientes */
+        /* Criar Socket para escutar os clientes */
         try {
             ServerSocket socketForClients = new ServerSocket(Integer.parseInt(clientsProps.getServerAdress(serverID)[1]));
             socketForClients.setReuseAddress(true);
 
-            /* Processar os pedidos dos clientes */
-            while (true) {
-                new Thread(new ProcessClient(this, socketForClients.accept())).start();
+            /* Criar Socket para escutar os servidores */
+            ServerSocket socketForServers = new ServerSocket(Integer.parseInt(serversProps.getServerAdress(serverID)[1]));
+            socketForClients.setReuseAddress(true);
+
+            /*Set State to Server */
+            if (Integer.parseInt(serverID.substring(3)) == 0) {
+                state = "LEADER";
+                String serverToTalk;
+                for(int i=0; i<serversProps.getHashMapProperties().size(); i++){
+                    serverToTalk = "srv" + i;
+                    if(!serverID.equals(serverToTalk)){
+                        new Thread(new TalkToFollower(this, Integer.parseInt(serversProps.getServerAdress(serverToTalk)[1]))).start();
+                    }
+                }
                 
+            } else {
+                state = "FOLLOWER";
+                new Thread(new Follower(this, socketForServers)).start();
             }
-        } 
-        catch (IOException ex) {
+
+            while (true) {
+                /* Processar os pedidos dos clientes */
+                new Thread(new ProcessClient(this, socketForClients.accept())).start();
+
+//                /* Processar os pedidos dos servidores */
+//                new Thread(new ProcessClient(this, socketForServers.accept())).start();
+            }
+        } catch (IOException ex) {
             System.err.println("O servidor " + serverID + " não consegue ativar a sua ligação \n" + ex.getLocalizedMessage());
         }
     }
-            
-
 
     public String getServerID() {
         return serverID;
@@ -82,14 +88,17 @@ public class Server implements Runnable {
     public int getIDMESSAGE() {
         return ID_MESSAGE;
     }
-    
+
     public void incrementIDMessage() {
         ID_MESSAGE++;
     }
 
-
     public String getState() {
         return state;
+    }
+
+    public PropertiesManager getServersProps() {
+        return serversProps;
     }
 
     public LinkedBlockingQueue<Message> getClientQueue() {
@@ -101,4 +110,3 @@ public class Server implements Runnable {
     }
 
 }
-

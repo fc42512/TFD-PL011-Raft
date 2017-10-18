@@ -59,7 +59,7 @@ public class ProcessClient implements Runnable {
     private void sendMessageToClient(Message m, Socket s) throws IOException {
         BufferedOutputStream bos = new BufferedOutputStream(s.getOutputStream());
         ObjectOutputStream osw = new ObjectOutputStream(bos);
-        osw.writeObject(m);//Envia a mensaem
+        osw.writeObject(m);//Envia a mensagem
         osw.flush();
         if (finishedConnection) {
             osw.close();
