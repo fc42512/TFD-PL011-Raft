@@ -63,7 +63,7 @@ public class Follower implements Runnable {
     private Message processRequest(Message request) {
         Message response = null;
         if (request != null) {
-            response = new Message(request.getId(), "RESPONSE", "Sucesso - mensagem recebida pelo follower " + server.getServerID());
+            response = new Message(request.getId(), request.getSource(), "RESPONSE", "Sucesso - mensagem recebida pelo follower " + server.getServerID());
 
         }
         return response;

@@ -40,11 +40,11 @@ public class ProcessClient implements Runnable {
                 ObjectInputStream dis = new ObjectInputStream(clientSocket.getInputStream());
                 Message request = (Message) dis.readObject();
                 Message response = processRequest(request);//executa o método que processa a mensagem
-                System.out.println("Recebida msg");
+//                System.out.println("Recebida msg");
 
                 if (response != null) {
                     sendMessageToClient(response, clientSocket);
-                    System.out.println("Enviada msg");
+//                    System.out.println("Enviada msg");
                 }
             }
 
@@ -76,12 +76,20 @@ public class ProcessClient implements Runnable {
         Message response = null;
         if (request != null) {
             if (server.getState().equals("LEADER")) {
-//                server.getClientQueue().add(request);
-
-                response = new Message(request.getId(), "RESPONSE", "Sucesso - atribuído o ID " + server.getIDMESSAGE());
-                server.incrementIDMessage();
+                server.appendMessageClientQueue(request);
+                Thread lt = server.getLeaderThread();
+                synchronized (lt) {
+                    try {
+                        System.out.println("Aguarda a resposta do líder...");
+                        lt.wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    response = new Message(request.getId(), request.getSource(), "RESPONSE", request.getContent() + " Sucesso - atribuído o ID " + server.getIDMESSAGE());
+                    server.incrementIDMessage();
+                }
             } else {
-                response = new Message(request.getId(), "REJECT", server.getLeaderID());
+                response = new Message(request.getId(), request.getSource(), "REJECT", server.getLeaderID());
                 finishedConnection = true;
             }
         }

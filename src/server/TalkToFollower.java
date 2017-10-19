@@ -63,10 +63,10 @@ public class TalkToFollower implements Runnable {
 
     private void setAppendEntries() {
         if (response == null) {
-            request = new Message("SR" + server.getServerID() + "-RQ" + ID_REQUEST, "", "");
+            request = new Message("SR" + server.getServerID() + "-RQ" + ID_REQUEST, request.getSource(), "", "");
         } else {
             ID_REQUEST++;
-            request = new Message("SR" + server.getServerID() + "-RQ" + ID_REQUEST, "", "");
+            request = new Message("SR" + server.getServerID() + "-RQ" + ID_REQUEST, request.getSource(), "", "");
         }
     }
 }

@@ -14,11 +14,13 @@ import java.io.Serializable;
 public class Message implements Serializable {
 
     private String id;
+    private int source;
     private String messageType;
     private String content;
 
-    public Message(String id, String messageType, String content) {
+    public Message(String id, int source, String messageType, String content) {
         this.id = id;
+        this.source = source;
         this.messageType = messageType;
         this.content = content;
     }
@@ -29,6 +31,14 @@ public class Message implements Serializable {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public int getSource() {
+        return source;
+    }
+
+    public void setSource(int source) {
+        this.source = source;
     }
 
     public String getMessageType() {

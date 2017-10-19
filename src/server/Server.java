@@ -9,7 +9,10 @@ import common.Message;
 import common.PropertiesManager;
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
 
 /**
  *
@@ -24,17 +27,32 @@ public class Server implements Runnable {
     private int ID_MESSAGE = 0;
     private String state;
 
-    private LinkedBlockingQueue<Message> clientQueue;
-    private LinkedBlockingQueue<Message> serverQueue;
+    private int currentTerm;
+    private String votedFor; //candidateId que recebeu o voto no termo atual (null se não há)
+    private ArrayList<LogEntry> log;
+    private int commitIndex;//indice do último log entry commitado
+    private int lastApplied;//indice do último log entry executado pela máquina de estados
+
+    private Thread leaderThread;
+    private LinkedList<Message> clientQueue;
+    private HashMap<Integer, Message> stateMachine;
 
     public Server(String id, PropertiesManager serversProps, PropertiesManager clientsProps) {
         this.serverID = id;
         this.leaderID = "srv0";
         this.serversProps = serversProps;
         this.clientsProps = clientsProps;
-        clientQueue = new LinkedBlockingQueue<>();
-        serverQueue = new LinkedBlockingQueue<>();
         System.out.println("O servidor " + serverID + " arrancou!");
+
+        this.currentTerm = 0;
+        this.votedFor = null;
+        this.log = new ArrayList<LogEntry>();
+        this.commitIndex = 0;
+        this.lastApplied = 0;
+
+        this.leaderThread = null;
+        clientQueue = new LinkedList<>();
+
     }
 
     @Override
@@ -52,14 +70,18 @@ public class Server implements Runnable {
             /*Set State to Server */
             if (Integer.parseInt(serverID.substring(3)) == 0) {
                 state = "LEADER";
+
+                leaderThread = new Thread(new Leader(this, getNextIndex()));
+                leaderThread.start();
+
                 String serverToTalk;
-                for(int i=0; i<serversProps.getHashMapProperties().size(); i++){
+                for (int i = 0; i < serversProps.getHashMapProperties().size(); i++) {
                     serverToTalk = "srv" + i;
-                    if(!serverID.equals(serverToTalk)){
+                    if (!serverID.equals(serverToTalk)) {
                         new Thread(new TalkToFollower(this, Integer.parseInt(serversProps.getServerAdress(serverToTalk)[1]))).start();
                     }
                 }
-                
+
             } else {
                 state = "FOLLOWER";
                 new Thread(new Follower(this, socketForServers)).start();
@@ -77,6 +99,11 @@ public class Server implements Runnable {
         }
     }
 
+    /**
+     * *******************************************************************
+     ****************** GETTER's e SETTER's*******************************
+     ********************************************************************
+     */
     public String getServerID() {
         return serverID;
     }
@@ -89,10 +116,6 @@ public class Server implements Runnable {
         return ID_MESSAGE;
     }
 
-    public void incrementIDMessage() {
-        ID_MESSAGE++;
-    }
-
     public String getState() {
         return state;
     }
@@ -101,12 +124,52 @@ public class Server implements Runnable {
         return serversProps;
     }
 
-    public LinkedBlockingQueue<Message> getClientQueue() {
-        return clientQueue;
+    public int getCurrentTerm() {
+        return currentTerm;
     }
 
-    public LinkedBlockingQueue<Message> getServerQueue() {
-        return serverQueue;
+    public Thread getLeaderThread() {
+        return leaderThread;
     }
 
+    /**
+     * *******************************************************************
+     ********************* MÉTODOS SERVIDOR ******************************
+     ********************************************************************
+     */
+    public void incrementIDMessage() {
+        ID_MESSAGE++;
+    }
+
+    public void incrementCurrentTerm() {
+        currentTerm++;
+    }
+
+    public int getCurrentLogIndex() {
+        if (log.size() == 0) {
+            return 0;
+        } else {
+            return log.size() - 1;
+        }
+    }
+
+    public void appendLogEntry(LogEntry logEntry) {
+        log.add(logEntry);
+    }
+
+    public void appendMessageClientQueue(Message m) {
+        clientQueue.addLast(m);
+    }
+    
+    private HashMap<String, Integer> getNextIndex() {
+        HashMap<String, Integer> nextIndex = new HashMap<>();
+        for(int i=0; i<serversProps.getHashMapProperties().size(); i++){
+            nextIndex.put("srv"+i, getCurrentLogIndex());
+        }
+        return nextIndex;
+    }
+
+    public void execute(int clientId, Message value) {
+        stateMachine.put(clientId, value);
+    }
 }

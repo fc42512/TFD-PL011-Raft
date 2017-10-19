@@ -72,17 +72,15 @@ public class Client implements Runnable {
     }
     
     private void setRequest(){
-        if (response == null) {
-            request = new Message("CL" + id + "-RQ" + ID_REQUEST, "", "");
-        } else {
+        if (response != null) {
             ID_REQUEST++;
-            request = new Message("CL" + id + "-RQ" + ID_REQUEST, "", "");
         }
+        request = new Message("CL" + id + "-RQ" + ID_REQUEST, id, "REQUEST", "CL" + id + "-RQ" + ID_REQUEST);
     }
     
     public void setResponse(Message response) {
         this.response = response;
-        System.out.println(response.getId() + " " + response.getContent());
+        System.out.println(response.getContent());
     }
 
     private int getServerPort(String serverID) {
@@ -91,7 +89,7 @@ public class Client implements Runnable {
 
     private String getRandomServer() {
         Random rnd = new Random();
-        return "srv" + rnd.nextInt(3);
+        return "srv" + rnd.nextInt(props.getHashMapProperties().size());
 
     }
 
