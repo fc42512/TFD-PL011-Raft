@@ -43,7 +43,7 @@ public class ProcessClient implements Runnable {
 //                System.out.println("Recebida msg");
 
                 if (response != null) {
-                    sendMessageToClient(response, clientSocket);
+                    sendMessageToClient(response);
 //                    System.out.println("Enviada msg");
                 }
             }
@@ -56,15 +56,15 @@ public class ProcessClient implements Runnable {
 
     }
 
-    private void sendMessageToClient(Message m, Socket s) throws IOException {
-        BufferedOutputStream bos = new BufferedOutputStream(s.getOutputStream());
+    public void sendMessageToClient(Message m) throws IOException {
+        BufferedOutputStream bos = new BufferedOutputStream(clientSocket.getOutputStream());
         ObjectOutputStream osw = new ObjectOutputStream(bos);
         osw.writeObject(m);//Envia a mensagem
         osw.flush();
         if (finishedConnection) {
             osw.close();
             bos.close();
-            s.close();//Fecha a ligação
+            clientSocket.close();//Fecha a ligação
         }
     }
 
@@ -76,23 +76,17 @@ public class ProcessClient implements Runnable {
         Message response = null;
         if (request != null) {
             if (server.getState().equals("LEADER")) {
+                request.setProcessClient(this);
                 server.appendMessageClientQueue(request);
-                Thread lt = server.getLeaderThread();
-                synchronized (lt) {
-                    try {
-                        System.out.println("Aguarda a resposta do líder...");
-                        lt.wait();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    response = new Message(request.getId(), request.getSource(), "RESPONSE", request.getContent() + " Sucesso - atribuído o ID " + server.getIDMESSAGE());
-                    server.incrementIDMessage();
-                }
-            } else {
-                response = new Message(request.getId(), request.getSource(), "REJECT", server.getLeaderID());
-                finishedConnection = true;
+
             }
+
+        } else {
+            response = new Message(request.getId(), request.getSource(), "REJECT", server.getLeaderID());
+            finishedConnection = true;
         }
+
         return response;
     }
+
 }

@@ -6,6 +6,7 @@
 package common;
 
 import java.io.Serializable;
+import server.ProcessClient;
 
 /**
  *
@@ -17,12 +18,14 @@ public class Message implements Serializable {
     private int source;
     private String messageType;
     private String content;
+    private ProcessClient processClient;
 
     public Message(String id, int source, String messageType, String content) {
         this.id = id;
         this.source = source;
         this.messageType = messageType;
         this.content = content;
+        this.processClient = null;
     }
 
     public String getId() {
@@ -56,6 +59,15 @@ public class Message implements Serializable {
     public void setContent(String content) {
         this.content = content;
     }
+
+    public ProcessClient getProcessClient() {
+        return processClient;
+    }
+
+    public void setProcessClient(ProcessClient processClient) {
+        this.processClient = processClient;
+    }
+    
 
     @Override
     public boolean equals(Object obj) {

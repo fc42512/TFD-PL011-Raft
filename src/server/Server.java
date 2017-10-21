@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  *
@@ -34,7 +35,7 @@ public class Server implements Runnable {
     private int lastApplied;//indice do último log entry executado pela máquina de estados
 
     private Thread leaderThread;
-    private LinkedList<Message> clientQueue;
+    private LinkedBlockingQueue<Message> clientQueue;
     private HashMap<Integer, Message> stateMachine;
 
     public Server(String id, PropertiesManager serversProps, PropertiesManager clientsProps) {
@@ -51,8 +52,8 @@ public class Server implements Runnable {
         this.lastApplied = 0;
 
         this.leaderThread = null;
-        clientQueue = new LinkedList<>();
-
+        clientQueue = new LinkedBlockingQueue<>();
+        stateMachine = new HashMap<>();
     }
 
     @Override
@@ -70,7 +71,7 @@ public class Server implements Runnable {
             /*Set State to Server */
             if (Integer.parseInt(serverID.substring(3)) == 0) {
                 state = "LEADER";
-
+                System.out.println("Verifica se é líder...");
                 leaderThread = new Thread(new Leader(this, getNextIndex()));
                 leaderThread.start();
 
@@ -131,6 +132,15 @@ public class Server implements Runnable {
     public Thread getLeaderThread() {
         return leaderThread;
     }
+    
+    public Message getStateMachineResult (int clientId) {
+        return stateMachine.get(clientId);
+    }
+
+    public LinkedBlockingQueue<Message> getClientQueue() {
+        return clientQueue;
+    }
+    
 
     /**
      * *******************************************************************
@@ -149,7 +159,7 @@ public class Server implements Runnable {
         if (log.size() == 0) {
             return 0;
         } else {
-            return log.size() - 1;
+            return log.size();
         }
     }
 
@@ -158,7 +168,7 @@ public class Server implements Runnable {
     }
 
     public void appendMessageClientQueue(Message m) {
-        clientQueue.addLast(m);
+        clientQueue.add(m);
     }
     
     private HashMap<String, Integer> getNextIndex() {

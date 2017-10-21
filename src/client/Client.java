@@ -40,8 +40,9 @@ public class Client implements Runnable {
     @Override
     public void run() {
         ClientRequest cr;
-
-        while (true) {
+        
+        int i = 0; 
+        while (i < 2) {
             cr = new ClientRequest(this);
             setRequest();
             while (!cr.isFinishedRequest()) {
@@ -60,6 +61,7 @@ public class Client implements Runnable {
                     leaderID = null;
                 }
             }
+            i++;
         }
     }
 
