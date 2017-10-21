@@ -31,25 +31,28 @@ public class TalkToFollower implements Runnable {
 
     @Override
     public void run() {
-            try {
-                Socket socket = new Socket("localhost", followerPort);
-                        ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
-                        oos.writeObject(appendEntry);
-                        oos.flush();
-                        System.out.println("Enviado para o follower...");
+        try {
+            Socket socket = new Socket("localhost", followerPort);
+            ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
+            oos.writeObject(appendEntry);
+            oos.flush();
+            System.out.println("Enviado para o follower...");
 
-                        ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
-                        response = (AppendEntry) ois.readObject();
-                        if (response != null) {
-                            server.getServerQueue().add(response);
-                            System.out.println("Enviado para o líder de novo...");
-                        }
-            } 
-            catch (IOException ex) {
-                System.err.println("O follower contactado pelo líder " + server.getLeaderID() + " não está disponível! \n" + ex.getLocalizedMessage());
-            } 
-            catch (ClassNotFoundException ex) {
-                System.err.println("Erro na conversão da classe \n" + ex.getLocalizedMessage());
+            ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
+            response = (AppendEntry) ois.readObject();
+            if (response != null) {
+                server.getServerQueue().add(response);
+                System.out.println("Enviado para o líder de novo...");
             }
+//            oos.close();
+//            ois.close();
+//            socket.close();
+        } 
+        catch (IOException ex) {
+            System.err.println("O follower contactado pelo líder " + server.getLeaderID() + " não está disponível! \n" + ex.getLocalizedMessage());
+        } 
+        catch (ClassNotFoundException ex) {
+            System.err.println("Erro na conversão da classe \n" + ex.getLocalizedMessage());
         }
     }
+}

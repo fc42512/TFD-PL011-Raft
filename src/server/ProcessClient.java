@@ -18,7 +18,7 @@ import java.util.Objects;
  *
  * @author João
  */
-public class ProcessClient implements Runnable, Serializable {
+public class ProcessClient implements Runnable {
 
     private Server server;
     private Socket clientSocket;
@@ -77,7 +77,6 @@ public class ProcessClient implements Runnable, Serializable {
     private Message processRequest(Message request) {
         Message response = null;
         if (request != null) {
-            System.out.println(server.getState());
             if (Objects.equals(server.getState(), "LEADER")) {
                 server.addSocket(request.getSource(), this);
                 server.appendMessageClientQueue(request);

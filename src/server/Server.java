@@ -9,7 +9,6 @@ import common.Message;
 import common.PropertiesManager;
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -33,7 +32,6 @@ public class Server implements Runnable {
     private int commitIndex;//indice do último log entry commitado
     private int lastApplied;//indice do último log entry executado pela máquina de estados
 
-    private Thread leaderThread;
     private LinkedBlockingQueue<Message> clientQueue;
     private LinkedBlockingQueue<AppendEntry> serverQueue;
     private HashMap<Integer, Message> stateMachine;
@@ -50,9 +48,8 @@ public class Server implements Runnable {
         this.votedFor = null;
         this.log = new ArrayList<LogEntry>();
         this.commitIndex = -1;
-        this.lastApplied = 0;
+        this.lastApplied = -1;
 
-        this.leaderThread = null;
         clientQueue = new LinkedBlockingQueue<>();
         serverQueue = new LinkedBlockingQueue<>();
         stateMachine = new HashMap<>();
@@ -75,16 +72,8 @@ public class Server implements Runnable {
             if (Integer.parseInt(serverID.substring(3)) == 0) {
                 state = "LEADER";
                 System.out.println("Verifica se é líder...");
-                leaderThread = new Thread(new Leader(this, getNextIndex()));
-                leaderThread.start();
+                new Thread(new Leader(this, getNextIndex())).start();
 
-//                String serverToTalk;
-//                for (int i = 0; i < serversProps.getHashMapProperties().size(); i++) {
-//                    serverToTalk = "srv" + i;
-//                    if (!serverID.equals(serverToTalk)) {
-//                        new Thread(new TalkToFollower(this, i, Integer.parseInt(serversProps.getServerAdress(serverToTalk)[1]))).start();
-//                    }
-//                }
 
             } else {
                 state = "FOLLOWER";
@@ -148,8 +137,8 @@ public class Server implements Runnable {
         this.commitIndex = commitIndex;
     }
 
-    public Thread getLeaderThread() {
-        return leaderThread;
+    public int getLastApplied() {
+        return lastApplied;
     }
 
     public ArrayList<LogEntry> getLog() {
@@ -178,9 +167,6 @@ public class Server implements Runnable {
      ********************* MÉTODOS SERVIDOR ******************************
      ********************************************************************
      */
-    public void incrementIDMessage() {
-        ID_MESSAGE++;
-    }
 
     public void incrementCurrentTerm() {
         currentTerm++;
@@ -213,9 +199,17 @@ public class Server implements Runnable {
         return nextIndex;
     }
 
-    public void execute(int clientId, Message value) {
-        stateMachine.put(clientId, value);
+    public void execute(LogEntry logEntry) {
+        Message result = new Message(logEntry.getIdMessage(), logEntry.getSource(), "RESPONSE", logEntry.getParameter() + " Sucesso - atribuído o ID " + getIDMESSAGE());
+        stateMachine.put(logEntry.getSource(), result);
+        lastApplied++;
+        ID_MESSAGE++;
     }
     
+    public void applyNewEntries (){
+        while(lastApplied < commitIndex){
+            execute(log.get(lastApplied+1));
+        }
+    }
     
 }

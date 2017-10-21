@@ -5,7 +5,6 @@
  */
 package server;
 
-import common.Message;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -57,9 +56,9 @@ public class Follower implements Runnable {
         ObjectOutputStream osw = new ObjectOutputStream(bos);
         osw.writeObject(ae);//Envia a mensagem
         osw.flush();
-        osw.close();
-        bos.close();
-        s.close();//Fecha a ligação
+//        osw.close();
+//        bos.close();
+//        s.close();//Fecha a ligação
 
     }
 
@@ -79,6 +78,7 @@ public class Follower implements Runnable {
                     return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, false, ae.getMessage());
                 } else if (server.getLog().get(ae.getPrevLogIndex()).getIndex() == ae.getPrevLogIndex()) {
                     addNewEntries(ae);
+                    server.applyNewEntries();
                     return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, true, ae.getMessage());
                 } else {
                     deleteConflictEntries(ae.getPrevLogIndex());
@@ -86,6 +86,7 @@ public class Follower implements Runnable {
                 }
             } else {
                 addNewEntries(ae);
+                server.applyNewEntries();
                 return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, true, ae.getMessage());
             }
         }
@@ -107,4 +108,6 @@ public class Follower implements Runnable {
             server.getLog().remove(i);
         }
     }
+    
+    
 }

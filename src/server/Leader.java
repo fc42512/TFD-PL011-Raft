@@ -40,7 +40,7 @@ public class Leader implements Runnable {
 
                 /* Líder adiciona uma nova entrada no seu log */
                 m = server.getClientQueue().remove();
-                server.appendLogEntry(new LogEntry(server.getCurrentTerm(), server.getCurrentLogIndex()+1, m.getMessageType(), m.getContent()));
+                server.appendLogEntry(new LogEntry(server.getCurrentTerm(), server.getCurrentLogIndex()+1, m.getMessageType(), m.getContent(), m.getId(), m.getSource()));
                 System.out.println("Processar a resposta...");
                 
                 /* Líder envia o AppendEntries RPC */
@@ -49,11 +49,9 @@ public class Leader implements Runnable {
                 sendAppendEntries(new AppendEntry(server.getCurrentTerm(), server.getServerID(), server.getCurrentLogIndex(), server.getLog().get(server.getCurrentLogIndex()).getTerm(),
                         entries, server.getCommitIndex(), true, m));
 
-                /* Líder executa o comando na sua máquina de estados e actualiza último indice comitado*/
-                response = new Message(m.getId(), m.getSource(), "RESPONSE", m.getContent() + " Sucesso - atribuído o ID " + server.getIDMESSAGE());
-                server.execute(m.getSource(), response);//executa comando na máquina de estados
-                server.incrementCommitIndex();
-                server.incrementIDMessage();
+                /* Líder executa o comando na sua máquina de estados */
+                server.applyNewEntries();//executa comando na máquina de estados
+                response = server.getStateMachineResult(m.getSource());
                 System.out.println("Executa na máquina de estados...");
 
                 /* Líder envia a resposta ao cliente */
@@ -80,6 +78,7 @@ public class Leader implements Runnable {
                 }
             }
         }
+        server.incrementCommitIndex();//actualiza último indice comitado
         System.out.println("Temos maioria...");
     }
     

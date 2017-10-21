@@ -6,7 +6,6 @@
 package common;
 
 import java.io.Serializable;
-import server.ProcessClient;
 
 /**
  *
