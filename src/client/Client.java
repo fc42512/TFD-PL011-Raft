@@ -91,7 +91,7 @@ public class Client implements Runnable {
 
     private String getRandomServer() {
         Random rnd = new Random();
-        return "srv" + rnd.nextInt(props.getHashMapProperties().size());
+        return "srv1" /*+ rnd.nextInt(props.getHashMapProperties().size())*/;
 
     }
 

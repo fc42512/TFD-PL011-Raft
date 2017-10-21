@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.Objects;
 
 /**
  *
@@ -30,13 +31,16 @@ public class ClientRequest {
     public void request(Message m, Socket socket) {
         Message response = null;
         try {
+            System.out.println("Ligado");
             ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
             oos.writeObject(m);
             oos.flush();
+            System.out.println("Enviado pedido");
             
             ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
             response = (Message) ois.readObject();
             processResponse(response);
+            System.out.println("Recebido pedido");
 
         } catch (IOException ex) {
             System.err.println("O servidor contactado pelo cliente " + client.getId() + " deu erro na leitura/escrita!" + ex.getLocalizedMessage());
@@ -48,14 +52,15 @@ public class ClientRequest {
 
     private void processResponse(Message response) {
         if (response != null) {
-            if (response.getMessageType().equals("REJECT")) {
+            if (Objects.equals(response.getMessageType(),"REJECT")) {
                 client.setLeaderID(response.getContent());
-                isFinishedRequest = false; 
+                isFinishedRequest = false;
+                isWrongLeader = true;
             }
-            else if (response.getMessageType().equals("RESPONSE")){
+            else if (Objects.equals(response.getMessageType(),"RESPONSE")){
                 client.setResponse(response);
                 isFinishedRequest = true;
-                isWrongLeader = true;
+                
             }
         }
     }

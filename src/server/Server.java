@@ -9,10 +9,9 @@ import common.Message;
 import common.PropertiesManager;
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -36,7 +35,9 @@ public class Server implements Runnable {
 
     private Thread leaderThread;
     private LinkedBlockingQueue<Message> clientQueue;
+    private LinkedBlockingQueue<AppendEntry> serverQueue;
     private HashMap<Integer, Message> stateMachine;
+    private HashMap<Integer, ProcessClient> clientSockets;
 
     public Server(String id, PropertiesManager serversProps, PropertiesManager clientsProps) {
         this.serverID = id;
@@ -48,12 +49,14 @@ public class Server implements Runnable {
         this.currentTerm = 0;
         this.votedFor = null;
         this.log = new ArrayList<LogEntry>();
-        this.commitIndex = 0;
+        this.commitIndex = -1;
         this.lastApplied = 0;
 
         this.leaderThread = null;
         clientQueue = new LinkedBlockingQueue<>();
+        serverQueue = new LinkedBlockingQueue<>();
         stateMachine = new HashMap<>();
+        clientSockets = new HashMap<>();
     }
 
     @Override
@@ -75,13 +78,13 @@ public class Server implements Runnable {
                 leaderThread = new Thread(new Leader(this, getNextIndex()));
                 leaderThread.start();
 
-                String serverToTalk;
-                for (int i = 0; i < serversProps.getHashMapProperties().size(); i++) {
-                    serverToTalk = "srv" + i;
-                    if (!serverID.equals(serverToTalk)) {
-                        new Thread(new TalkToFollower(this, Integer.parseInt(serversProps.getServerAdress(serverToTalk)[1]))).start();
-                    }
-                }
+//                String serverToTalk;
+//                for (int i = 0; i < serversProps.getHashMapProperties().size(); i++) {
+//                    serverToTalk = "srv" + i;
+//                    if (!serverID.equals(serverToTalk)) {
+//                        new Thread(new TalkToFollower(this, i, Integer.parseInt(serversProps.getServerAdress(serverToTalk)[1]))).start();
+//                    }
+//                }
 
             } else {
                 state = "FOLLOWER";
@@ -113,6 +116,10 @@ public class Server implements Runnable {
         return leaderID;
     }
 
+    public void setLeaderID(String leaderID) {
+        this.leaderID = leaderID;
+    }
+
     public int getIDMESSAGE() {
         return ID_MESSAGE;
     }
@@ -129,8 +136,24 @@ public class Server implements Runnable {
         return currentTerm;
     }
 
+    public void setCurrentTerm(int currentTerm) {
+        this.currentTerm = currentTerm;
+    }
+
+    public int getCommitIndex() {
+        return commitIndex;
+    }
+
+    public void setCommitIndex(int commitIndex) {
+        this.commitIndex = commitIndex;
+    }
+
     public Thread getLeaderThread() {
         return leaderThread;
+    }
+
+    public ArrayList<LogEntry> getLog() {
+        return log;
     }
     
     public Message getStateMachineResult (int clientId) {
@@ -139,6 +162,14 @@ public class Server implements Runnable {
 
     public LinkedBlockingQueue<Message> getClientQueue() {
         return clientQueue;
+    }
+
+    public LinkedBlockingQueue<AppendEntry> getServerQueue() {
+        return serverQueue;
+    }
+
+    public ProcessClient getClientSocket(int id) {
+        return clientSockets.get(id);
     }
     
 
@@ -154,13 +185,16 @@ public class Server implements Runnable {
     public void incrementCurrentTerm() {
         currentTerm++;
     }
+    
+    public void incrementCommitIndex() {
+        commitIndex++;
+    }
 
     public int getCurrentLogIndex() {
-        if (log.size() == 0) {
-            return 0;
-        } else {
-            return log.size();
-        }
+            return log.size()-1;
+    }
+    public void addSocket(int id, ProcessClient processClient) {
+        clientSockets.put(id, processClient);
     }
 
     public void appendLogEntry(LogEntry logEntry) {
@@ -182,4 +216,6 @@ public class Server implements Runnable {
     public void execute(int clientId, Message value) {
         stateMachine.put(clientId, value);
     }
+    
+    
 }

@@ -10,13 +10,15 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.net.Socket;
+import java.util.Objects;
 
 /**
  *
  * @author João
  */
-public class ProcessClient implements Runnable {
+public class ProcessClient implements Runnable, Serializable {
 
     private Server server;
     private Socket clientSocket;
@@ -40,11 +42,11 @@ public class ProcessClient implements Runnable {
                 ObjectInputStream dis = new ObjectInputStream(clientSocket.getInputStream());
                 Message request = (Message) dis.readObject();
                 Message response = processRequest(request);//executa o método que processa a mensagem
-//                System.out.println("Recebida msg");
+                System.out.println("Recebida msg. Sou o " + server.getServerID());
 
                 if (response != null) {
                     sendMessageToClient(response);
-//                    System.out.println("Enviada msg");
+                    System.out.println("Enviada msg");
                 }
             }
 
@@ -75,18 +77,17 @@ public class ProcessClient implements Runnable {
     private Message processRequest(Message request) {
         Message response = null;
         if (request != null) {
-            if (server.getState().equals("LEADER")) {
-                request.setProcessClient(this);
+            System.out.println(server.getState());
+            if (Objects.equals(server.getState(), "LEADER")) {
+                server.addSocket(request.getSource(), this);
                 server.appendMessageClientQueue(request);
+                System.out.println("Cliente");
 
+            } else {
+                response = new Message(request.getId(), request.getSource(), "REJECT", server.getLeaderID());
+                finishedConnection = true;
             }
-
-        } else {
-            response = new Message(request.getId(), request.getSource(), "REJECT", server.getLeaderID());
-            finishedConnection = true;
         }
-
         return response;
     }
-
 }

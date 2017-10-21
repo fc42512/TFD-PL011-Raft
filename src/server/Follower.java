@@ -36,14 +36,13 @@ public class Follower implements Runnable {
             while (true) {
 
                 ObjectInputStream dis = new ObjectInputStream(liderSocket.getInputStream());
-                Message request = (Message) dis.readObject();
-                Message response = processRequest(request);//executa o método que processa a mensagem
+                AppendEntry response = processAppendEntries(dis.readObject());//executa o método que processa ao appendEntries
                 System.out.println("Recebida msg");
 
-                if (response != null) {
-                    sendMessageToLeader(response, liderSocket);
-                    System.out.println("Enviada msg");
-                }
+//                if (response != null) {
+                sendMessageToLeader(response, liderSocket);
+                System.out.println("Enviada msg");
+//                }
             }
 
         } catch (IOException ex) {
@@ -53,20 +52,59 @@ public class Follower implements Runnable {
         }
     }
 
-    private void sendMessageToLeader(Message m, Socket s) throws IOException {
+    private void sendMessageToLeader(AppendEntry ae, Socket s) throws IOException {
         BufferedOutputStream bos = new BufferedOutputStream(s.getOutputStream());
         ObjectOutputStream osw = new ObjectOutputStream(bos);
-        osw.writeObject(m);//Envia a mensagem
+        osw.writeObject(ae);//Envia a mensagem
         osw.flush();
+        osw.close();
+        bos.close();
+        s.close();//Fecha a ligação
+
     }
 
-    private Message processRequest(Message request) {
-        Message response = null;
-        if (request != null) {
-            response = new Message(request.getId(), request.getSource(), "RESPONSE", "Sucesso - mensagem recebida pelo follower " + server.getServerID());
+    private AppendEntry processAppendEntries(Object obj) {
+        AppendEntry response = null;
+        if ((obj instanceof AppendEntry) && obj != null) {
+            AppendEntry ae = (AppendEntry) obj;
+            server.setLeaderID(ae.getLeaderId());//guarda o ID do líder
 
+            /* Responde falso se term < currentTerm */
+            if (ae.getTerm() < server.getCurrentTerm()) {
+                return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, false, ae.getMessage());
+            } 
+            /* Responde falso se term of prevLogIndex != prevLogTerm */ 
+            else if (!server.getLog().isEmpty()) {
+                if (server.getLog().get(ae.getPrevLogIndex()).getTerm() != ae.getPrevLogTerm()) {
+                    return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, false, ae.getMessage());
+                } else if (server.getLog().get(ae.getPrevLogIndex()).getIndex() == ae.getPrevLogIndex()) {
+                    addNewEntries(ae);
+                    return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, true, ae.getMessage());
+                } else {
+                    deleteConflictEntries(ae.getPrevLogIndex());
+                    return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, false, ae.getMessage());
+                }
+            } else {
+                addNewEntries(ae);
+                return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, true, ae.getMessage());
+            }
         }
+
         return response;
     }
-}
 
+    private void addNewEntries(AppendEntry ae) {
+        for (LogEntry l : ae.getEntries()) {
+            server.appendLogEntry(l);
+        }
+        server.setCurrentTerm(ae.getTerm());
+        server.setCommitIndex(ae.getLeaderCommit());
+    }
+
+    private void deleteConflictEntries(int index) {
+        int maxIndex = server.getLog().size();
+        for (int i = maxIndex; i >= index; i--) {
+            server.getLog().remove(i);
+        }
+    }
+}

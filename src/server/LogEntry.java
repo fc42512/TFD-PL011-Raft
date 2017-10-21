@@ -5,11 +5,13 @@
  */
 package server;
 
+import java.io.Serializable;
+
 /**
  *
  * @author João
  */
-public class LogEntry {
+public class LogEntry implements Serializable{
     
     private int term;
     private int index;

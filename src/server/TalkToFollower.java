@@ -5,7 +5,6 @@
  */
 package server;
 
-import common.Message;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -19,54 +18,38 @@ public class TalkToFollower implements Runnable {
 
     private Server server;
     private int followerPort;
-    private boolean connectionEstablished;
-    private int ID_REQUEST;
-    private Message request;
-    private Message response;
+    private AppendEntry appendEntry;
+    private AppendEntry response;
 
-    public TalkToFollower(Server server, int followerPort) {
+    public TalkToFollower(Server server, int followerPort, AppendEntry appendEntry) {
         this.server = server;
         this.followerPort = followerPort;
-        this.connectionEstablished = false;
-        response = null;
-        this.ID_REQUEST = 0;
+        this.appendEntry = appendEntry;
+        this.response = null;
+
     }
 
     @Override
     public void run() {
-
-        while (!connectionEstablished) {
             try {
                 Socket socket = new Socket("localhost", followerPort);
-                connectionEstablished = true;
+                        ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
+                        oos.writeObject(appendEntry);
+                        oos.flush();
+                        System.out.println("Enviado para o follower...");
 
-                while (true) {
-                    setAppendEntries();
-                    ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
-                    oos.writeObject(request);
-                    oos.flush();
-
-                    ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
-                    response = (Message) ois.readObject();
-                    if (response != null) {
-                        System.out.println(response.getId() + " " + response.getContent());
-                    }
-                }
-            } catch (IOException ex) {
+                        ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
+                        response = (AppendEntry) ois.readObject();
+                        if (response != null) {
+                            server.getServerQueue().add(response);
+                            System.out.println("Enviado para o líder de novo...");
+                        }
+            } 
+            catch (IOException ex) {
                 System.err.println("O follower contactado pelo líder " + server.getLeaderID() + " não está disponível! \n" + ex.getLocalizedMessage());
-                connectionEstablished = false;
-            } catch (ClassNotFoundException ex) {
+            } 
+            catch (ClassNotFoundException ex) {
                 System.err.println("Erro na conversão da classe \n" + ex.getLocalizedMessage());
             }
         }
     }
-
-    private void setAppendEntries() {
-        if (response == null) {
-            request = new Message("SR" + server.getServerID() + "-RQ" + ID_REQUEST, request.getSource(), "", "");
-        } else {
-            ID_REQUEST++;
-            request = new Message("SR" + server.getServerID() + "-RQ" + ID_REQUEST, request.getSource(), "", "");
-        }
-    }
-}
