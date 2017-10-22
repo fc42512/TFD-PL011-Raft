@@ -5,12 +5,14 @@
  */
 package server;
 
+import com.sun.org.apache.xalan.internal.utils.Objects;
 import common.Message;
 import common.PropertiesManager;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -20,6 +22,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class Server implements Runnable {
 
     private String serverID;
+    private boolean runServer;
     private String leaderID;
     private PropertiesManager serversProps;
     private PropertiesManager clientsProps;
@@ -34,11 +37,12 @@ public class Server implements Runnable {
 
     private LinkedBlockingQueue<Message> clientQueue;
     private LinkedBlockingQueue<AppendEntry> serverQueue;
-    private HashMap<Integer, Message> stateMachine;
+    private HashMap<String, Message> stateMachine;
     private HashMap<Integer, ProcessClient> clientSockets;
 
     public Server(String id, PropertiesManager serversProps, PropertiesManager clientsProps) {
         this.serverID = id;
+        this.runServer = true;
         this.leaderID = "srv0";
         this.serversProps = serversProps;
         this.clientsProps = clientsProps;
@@ -47,8 +51,8 @@ public class Server implements Runnable {
         this.currentTerm = 0;
         this.votedFor = null;
         this.log = new ArrayList<LogEntry>();
-        this.commitIndex = -1;
-        this.lastApplied = -1;
+        this.commitIndex = 0;
+        this.lastApplied = 0;
 
         clientQueue = new LinkedBlockingQueue<>();
         serverQueue = new LinkedBlockingQueue<>();
@@ -72,18 +76,18 @@ public class Server implements Runnable {
             if (Integer.parseInt(serverID.substring(3)) == 0) {
                 state = "LEADER";
                 System.out.println("Verifica se é líder...");
-                new Thread(new Leader(this, getNextIndex())).start();
-
+                new Thread(new Leader(this, getNextIndex(), getNextIndex())).start();
 
             } else {
                 state = "FOLLOWER";
                 new Thread(new Follower(this, socketForServers)).start();
             }
 
-            while (true) {
+            while (this.runServer) {
                 /* Processar os pedidos dos clientes */
+                System.out.println("teste");
                 new Thread(new ProcessClient(this, socketForClients.accept())).start();
-
+                System.out.println("teste");
 //                /* Processar os pedidos dos servidores */
 //                new Thread(new ProcessClient(this, socketForServers.accept())).start();
             }
@@ -95,7 +99,7 @@ public class Server implements Runnable {
     /**
      * *******************************************************************
      ****************** GETTER's e SETTER's*******************************
-     ********************************************************************
+     * *******************************************************************
      */
     public String getServerID() {
         return serverID;
@@ -144,9 +148,9 @@ public class Server implements Runnable {
     public ArrayList<LogEntry> getLog() {
         return log;
     }
-    
-    public Message getStateMachineResult (int clientId) {
-        return stateMachine.get(clientId);
+
+    public Message getStateMachineResult(String id) {
+        return stateMachine.get(id);
     }
 
     public LinkedBlockingQueue<Message> getClientQueue() {
@@ -160,25 +164,24 @@ public class Server implements Runnable {
     public ProcessClient getClientSocket(int id) {
         return clientSockets.get(id);
     }
-    
 
     /**
      * *******************************************************************
      ********************* MÉTODOS SERVIDOR ******************************
-     ********************************************************************
+     * *******************************************************************
      */
-
+    
+    public void stopServer(){
+        runServer = false;
+    }
     public void incrementCurrentTerm() {
         currentTerm++;
     }
-    
-    public void incrementCommitIndex() {
-        commitIndex++;
-    }
 
     public int getCurrentLogIndex() {
-            return log.size()-1;
+        return log.size() - 1;
     }
+
     public void addSocket(int id, ProcessClient processClient) {
         clientSockets.put(id, processClient);
     }
@@ -190,26 +193,58 @@ public class Server implements Runnable {
     public void appendMessageClientQueue(Message m) {
         clientQueue.add(m);
     }
-    
-    private HashMap<String, Integer> getNextIndex() {
-        HashMap<String, Integer> nextIndex = new HashMap<>();
-        for(int i=0; i<serversProps.getHashMapProperties().size(); i++){
-            nextIndex.put("srv"+i, getCurrentLogIndex());
+
+    private Map<String, Integer> getNextIndex() {
+        Map<String, Integer> nextIndex = new HashMap<>();
+        int index = log.size();
+        for (int i = 0; i < serversProps.getHashMapProperties().size(); i++) {
+            if (!Objects.equals("srv" + i, serverID)) {
+                nextIndex.put("srv" + i, index);
+            }
         }
         return nextIndex;
     }
 
     public void execute(LogEntry logEntry) {
         Message result = new Message(logEntry.getIdMessage(), logEntry.getSource(), "RESPONSE", logEntry.getParameter() + " Sucesso - atribuído o ID " + getIDMESSAGE());
-        stateMachine.put(logEntry.getSource(), result);
-        lastApplied++;
+        stateMachine.put(logEntry.getIdMessage() + logEntry.getSource(), result);
+        logEntry.setCommited(true);
         ID_MESSAGE++;
-    }
-    
-    public void applyNewEntries (){
-        while(lastApplied < commitIndex){
-            execute(log.get(lastApplied+1));
+
+        /* Servidor envia a resposta ao cliente, caso seja o líder*/
+        if (logEntry.getSource() != 0) {
+            if (Objects.equals(state, "LEADER")) {
+                try {
+                    getClientSocket(logEntry.getSource()).sendMessageToClient(result);//responde ao cliente
+                    logEntry.setSentToClient(true);
+                } catch (IOException ex) {
+                    System.err.println("Erro na resposta ao cliente pelo líder \n" + ex.getLocalizedMessage());
+                    logEntry.setSentToClient(false);
+                }
+            }
         }
     }
+
+    public void applyNewEntries() {
+        int aux;
+        if (commitIndex > lastApplied) {
+            aux = lastApplied + 1;
+        } else {
+            aux = lastApplied;
+        }
+        for (int i = aux; i <= commitIndex; i++) {
+            execute(log.get(i));
+        }
+        lastApplied = commitIndex;
+
+    }
     
+    public String printLog() {
+        String str = serverID + "->LOG: ";
+        for(LogEntry l : log){
+            str += l.getTerm() + "-" + l.getIndex() + "-" + l.getIdMessage() +"/";
+        }
+        return str;
+    }
+
 }

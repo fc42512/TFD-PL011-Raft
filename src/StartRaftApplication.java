@@ -2,7 +2,10 @@
 import client.Client;
 import common.PropertiesManager;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import server.Server;
 
 /*
@@ -16,8 +19,9 @@ import server.Server;
  */
 public class StartRaftApplication {
 
-    private static HashMap<String, Thread> servidores;
-    private static HashMap<Integer, Thread> clientes;
+    private static Map<String, Server> servidores;
+    private static Map<String, Thread> threadsServidores;
+    private static Map<Integer, Thread> clientes;
     private static PropertiesManager serversProps;
     private static PropertiesManager clientsProps;
 
@@ -25,6 +29,7 @@ public class StartRaftApplication {
 
         Scanner sc = new Scanner(System.in);
         servidores = new HashMap<>();
+        threadsServidores = new HashMap<>();
         clientes = new HashMap<>();
         serversProps = new PropertiesManager("servidor");
         clientsProps = new PropertiesManager("cliente");
@@ -34,7 +39,9 @@ public class StartRaftApplication {
                     + "1 - Arrancar um servidor\n"
                     + "2 - Parar um servidor\n"
                     + "3 - Arrancar um cliente\n"
-                    + "4 - Parar um cliente");
+                    + "4 - Parar um cliente\n"
+                    + "5 - Imprimir os log´s de todos os servidores\n"
+                    + "6 - Terminar a aplicação");
             switch (sc.nextInt()) {
                 case 1:
                     System.out.println("Introduza o ID do servidor: ");
@@ -52,6 +59,14 @@ public class StartRaftApplication {
                     System.out.println("Introduza o ID do cliente: ");
                     stopClient(sc.nextInt());
                     break;
+                case 5:
+                    for (Map.Entry<String, Server> server : servidores.entrySet()) {
+                        System.out.println(server.getValue().printLog() + "\n");
+                    }
+                    break;
+                case 6:
+                    System.exit(0);
+                    break;
                 default:
                     break;
             }
@@ -61,15 +76,21 @@ public class StartRaftApplication {
     /* Iniciar Servidor */
     public static void startServer(int id) {
         String serverID = "srv" + id;
-        Thread serverThread = new Thread(new Server(serverID, serversProps, clientsProps));
+        Server server = new Server(serverID, serversProps, clientsProps);
+        Thread serverThread = new Thread(server);
         serverThread.start();
-        servidores.put(serverID, serverThread);
+        servidores.put(serverID, server);
+        threadsServidores.put(serverID, serverThread);
 
     }
-    
+
     /* Parar Servidor */
-    public static void stopServer(int id){
-        servidores.get("srv"+id).interrupt();
+    public static void stopServer(int id) {
+        servidores.get("srv" + id).stopServer();
+        if (threadsServidores.get("srv" + id).isAlive()) {
+            System.out.println("O servidor " + id + " foi desligado!\n");
+        }
+
     }
 
     /* Iniciar Clientes */
@@ -79,9 +100,12 @@ public class StartRaftApplication {
         clientes.put(id, clientThread);
 
     }
-    
+
     /* Parar Cliente */
-    public static void stopClient(int id){
+    public static void stopClient(int id) {
         clientes.get(id).interrupt();
+        if (!clientes.get(id).isAlive()) {
+            System.out.println("O cliente " + id + " foi desligado!\n");
+        }
     }
 }

@@ -80,7 +80,6 @@ public class ProcessClient implements Runnable {
             if (Objects.equals(server.getState(), "LEADER")) {
                 server.addSocket(request.getSource(), this);
                 server.appendMessageClientQueue(request);
-                System.out.println("Cliente");
 
             } else {
                 response = new Message(request.getId(), request.getSource(), "REJECT", server.getLeaderID());

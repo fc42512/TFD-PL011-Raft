@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -26,7 +28,6 @@ public class TalkToFollower implements Runnable {
         this.followerPort = followerPort;
         this.appendEntry = appendEntry;
         this.response = null;
-
     }
 
     @Override
@@ -44,15 +45,16 @@ public class TalkToFollower implements Runnable {
                 server.getServerQueue().add(response);
                 System.out.println("Enviado para o líder de novo...");
             }
-//            oos.close();
-//            ois.close();
-//            socket.close();
+            oos.close();
+            ois.close();
+            socket.close();
         } 
         catch (IOException ex) {
             System.err.println("O follower contactado pelo líder " + server.getLeaderID() + " não está disponível! \n" + ex.getLocalizedMessage());
         } 
         catch (ClassNotFoundException ex) {
             System.err.println("Erro na conversão da classe \n" + ex.getLocalizedMessage());
+
         }
     }
 }

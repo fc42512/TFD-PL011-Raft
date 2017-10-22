@@ -16,11 +16,11 @@ import java.util.ArrayList;
 public class AppendEntry implements Serializable {
     
     private int term;//termo do líder
-    private String leaderId;//do lider para o follower -> leaderId; do follower oara o lider -> foolowerId
-    private int prevLogIndex;//indice do log entry imediatamente anterior aos atuais
-    private int prevLogTerm;//termo do prevLogIndex entry
-    private ArrayList<LogEntry> entries;//guarda log entries (no heatbeat está vazio)
-    private int leaderCommit;// commitIndex do líder
+    private String leaderId;// lider para o follower -> leaderId; follower para o lider -> foolowerId
+    private int prevLogIndex;//lider para o follower -> indice do log entry imediatamente anterior aos atuais
+    private int prevLogTerm;//lider para o follower -> termo do prevLogIndex entry;
+    private ArrayList<LogEntry> entries;//guarda log entries (no heartbeat está vazio)
+    private int leaderCommit;// lider para o follower -> commitIndex do líder; follower para o lider -> ultimo commit do follower
     private boolean success;
     private Message message;
     

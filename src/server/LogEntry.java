@@ -19,6 +19,9 @@ public class LogEntry implements Serializable{
     private String parameter;
     private String idMessage;
     private int source;
+    private int majority;
+    private boolean commited;
+    private boolean sentToClient;
 
     public LogEntry(int term, int index, String command, String parameter, String idMessage, int source) {
         this.term = term;
@@ -27,6 +30,9 @@ public class LogEntry implements Serializable{
         this.parameter = parameter;
         this.idMessage = idMessage;
         this.source = source;
+        this.majority = 1;
+        this.commited = false;
+        this.sentToClient = false;
     }
 
     public int getTerm() {
@@ -75,6 +81,30 @@ public class LogEntry implements Serializable{
 
     public void setSource(int source) {
         this.source = source;
+    }
+
+    public int getMajority() {
+        return majority;
+    }
+
+    public void incrementMajority() {
+        this.majority++;
+    }
+
+    public boolean isCommited() {
+        return commited;
+    }
+
+    public void setCommited(boolean commited) {
+        this.commited = commited;
+    }
+
+    public boolean isSentToClient() {
+        return sentToClient;
+    }
+
+    public void setSentToClient(boolean sentToClient) {
+        this.sentToClient = sentToClient;
     }
     
 }

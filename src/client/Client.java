@@ -42,7 +42,7 @@ public class Client implements Runnable {
         ClientRequest cr;
         
         int i = 0; 
-        while (i < 2) {
+        while (i < 50) {
             cr = new ClientRequest(this);
             setRequest();
             while (!cr.isFinishedRequest()) {
@@ -91,7 +91,7 @@ public class Client implements Runnable {
 
     private String getRandomServer() {
         Random rnd = new Random();
-        return "srv1" /*+ rnd.nextInt(props.getHashMapProperties().size())*/;
+        return "srv" + rnd.nextInt(props.getHashMapProperties().size());
 
     }
 
