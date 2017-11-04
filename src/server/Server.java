@@ -5,7 +5,6 @@
  */
 package server;
 
-import com.sun.org.apache.xalan.internal.utils.Objects;
 import common.Message;
 import common.PropertiesManager;
 import java.io.IOException;
@@ -13,6 +12,7 @@ import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -70,7 +70,7 @@ public class Server implements Runnable {
 
             /* Criar Socket para escutar os servidores */
             ServerSocket socketForServers = new ServerSocket(Integer.parseInt(serversProps.getServerAdress(serverID)[1]));
-            socketForClients.setReuseAddress(true);
+            socketForServers.setReuseAddress(true);
 
             /*Set State to Server */
             if (Integer.parseInt(serverID.substring(3)) == 0) {
@@ -119,6 +119,10 @@ public class Server implements Runnable {
         return state;
     }
 
+    public void setState(String state) {
+        this.state = state;
+    }
+    
     public PropertiesManager getServersProps() {
         return serversProps;
     }

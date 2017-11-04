@@ -23,9 +23,10 @@ public class AppendEntry implements Serializable {
     private int leaderCommit;// lider para o follower -> commitIndex do líder; follower para o lider -> ultimo commit do follower
     private boolean success;
     private Message message;
+    private String type;
     
    
-    public AppendEntry(int term, String leaderId, int prevLogIndex, int prevLogTerm, ArrayList<LogEntry> entries, int leaderCommit, boolean success, Message m) {
+    public AppendEntry(int term, String leaderId, int prevLogIndex, int prevLogTerm, ArrayList<LogEntry> entries, int leaderCommit, boolean success, Message m, String type) {
         this.term = term;
         this.leaderId = leaderId;
         this.prevLogIndex = prevLogIndex;
@@ -34,6 +35,7 @@ public class AppendEntry implements Serializable {
         this.leaderCommit = leaderCommit;
         this.success = success;
         this.message = m;
+        this.type = type;
     }
 
     public int getTerm() {
@@ -66,6 +68,10 @@ public class AppendEntry implements Serializable {
 
     public Message getMessage() {
         return message;
+    }
+
+    public String getType() {
+        return type;
     }
     
 }

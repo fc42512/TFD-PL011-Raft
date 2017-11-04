@@ -12,14 +12,18 @@ import java.net.ServerSocket;
  *
  * @author João
  */
-public class Follower implements Runnable {
+public class Follower extends Thread {
 
     private Server server;
     private ServerSocket serverSocket;
+    private boolean stopFollower;
+    private ThreadGroup followerThreads;
 
     public Follower(Server s, ServerSocket ss) {
         this.server = s;
         this.serverSocket = ss;
+        this.stopFollower = false;
+        this.followerThreads = new ThreadGroup("followerThreads");
     }
 
     @Override
@@ -27,15 +31,25 @@ public class Follower implements Runnable {
         try {
             /*Follower faz commit de uma "blank no-operation" entry no início */
 //            server.appendLogEntry(new LogEntry(server.getCurrentTerm(), server.getCurrentLogIndex()+1, "NO-OP", "noOperation", null, 0));
-            while (true) {
-
-                new Thread(new FollowerProcess(server, serverSocket.accept())).start();
+            while (!stopFollower) {
+                
+                FollowerProcess fp = new FollowerProcess(server, serverSocket.accept(), this);
+                new Thread(followerThreads, fp).start();
 
             }
+            serverSocket.close();
+//            followerThreads.destroy();
 
         } catch (IOException ex) {
             System.err.println(server.getServerID() + " - Erro no estabelecimento da ligação com o líder \n" + ex.getLocalizedMessage());
 
         }
+    }
+
+    public void stopFollower() {
+        this.stopFollower = true;
+    }
+    public void shutdownFollower(){
+        this.stop();
     }
 }

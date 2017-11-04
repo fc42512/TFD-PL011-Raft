@@ -36,9 +36,10 @@ public class TalkToFollower implements Runnable {
 
     @Override
     public void run() {
+        Socket socket = null;
         while (!connectionAlive) {
             try {
-                Socket socket = new Socket("localhost", followerPort);
+                socket = new Socket("localhost", followerPort);
                 connectionAlive = true;
                 while (true) {
                     if (!appendEntriesToSend.isEmpty()) {
@@ -53,16 +54,24 @@ public class TalkToFollower implements Runnable {
                             server.getServerQueue().add(response);
                             System.out.println("Enviado para o líder de novo...");
                         }
-                        oos.close();
-                        ois.close();
+//                        oos.close();
+//                        ois.close();
                     }
                 }
-//            socket.close();
+            
             } catch (IOException ex) {
                 System.err.println("O follower contactado pelo líder " + server.getLeaderID() + " não está disponível! \n" + ex.getLocalizedMessage());
                 connectionAlive = false;
                 try {
-                    Thread.sleep(10000);
+                    if(socket != null){
+                        socket.close();
+                    }
+                } catch (IOException ex1) {
+                    
+                }
+                appendEntriesToSend.clear();
+                try {
+                    Thread.sleep(5000);
                 } catch (InterruptedException ex1) {
                     System.err.println("O follower contactado pelo líder " + server.getLeaderID() + " não está disponível! Estou à espera!!!\n" + ex.getLocalizedMessage());
                 }

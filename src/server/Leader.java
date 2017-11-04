@@ -35,6 +35,7 @@ public class Leader implements Runnable {
     public void run() {
         System.out.println("Líder arrancou...");
         createTalkToFollowers();
+        new Thread(new HeartBeat(this)).start();//arranca com a thread responsável por preparar os heartbeats para serem enviados
 
         /*Líder faz commit de uma "blank no-operation" entry no início de cada termo */
 //        server.appendLogEntry(new LogEntry(server.getCurrentTerm(), server.getCurrentLogIndex() + 1, "NO-OP", "noOperation", null, 0));
@@ -74,7 +75,7 @@ public class Leader implements Runnable {
                     prevLogTerm = server.getLog().get(server.getCurrentLogIndex() - 1).getTerm();
                     commitIndex = server.getCommitIndex();
                 }
-                sendAppendEntries(new AppendEntry(server.getCurrentTerm(), server.getServerID(), prevLogIndex, prevLogTerm, entries, commitIndex, true, m));
+                sendAppendEntries(new AppendEntry(server.getCurrentTerm(), server.getServerID(), prevLogIndex, prevLogTerm, entries, commitIndex, true, m, "APPENDENTRY"));
 
             } 
 
@@ -122,7 +123,7 @@ public class Leader implements Runnable {
         }
     }
 
-    private void sendAppendEntries(AppendEntry ae) {
+    public void sendAppendEntries(AppendEntry ae) {
         for(Map.Entry<String, TalkToFollower> t : followers.entrySet()){
             t.getValue().storeAppendEntryInQueue(ae);
         }
@@ -144,7 +145,7 @@ public class Leader implements Runnable {
                     prevLogIndex = follower.getValue() - 1;
                     prevLogTerm = server.getLog().get(follower.getValue() - 1).getTerm();
                 }
-                AppendEntry ae = new AppendEntry(server.getCurrentTerm(), server.getServerID(), prevLogIndex, prevLogTerm, entries, server.getCommitIndex(), true, null);
+                AppendEntry ae = new AppendEntry(server.getCurrentTerm(), server.getServerID(), prevLogIndex, prevLogTerm, entries, server.getCommitIndex(), true, null, "APPENDENTRY");
                 followers.get(follower.getKey()).storeAppendEntryInQueue(ae);
             }
 //            while (matchIndex.get(follower.getKey()) < server.getCurrentLogIndex()) {
@@ -156,5 +157,9 @@ public class Leader implements Runnable {
 //                }
 //            }
         }
+    }
+    
+    public Server getServer() {
+        return this.server;
     }
 }
