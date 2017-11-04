@@ -50,7 +50,7 @@ public class FollowerProcess implements Runnable {
         osw.flush();
         osw.close();
         bos.close();
-        s.close();//Fecha a ligação
+//        s.close();//Fecha a ligação
     }
 
     private AppendEntry processAppendEntries(Object obj) {

@@ -85,9 +85,7 @@ public class Server implements Runnable {
 
             while (this.runServer) {
                 /* Processar os pedidos dos clientes */
-                System.out.println("teste");
                 new Thread(new ProcessClient(this, socketForClients.accept())).start();
-                System.out.println("teste");
 //                /* Processar os pedidos dos servidores */
 //                new Thread(new ProcessClient(this, socketForServers.accept())).start();
             }

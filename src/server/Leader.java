@@ -8,9 +8,8 @@ package server;
 import common.Message;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -21,16 +20,21 @@ public class Leader implements Runnable {
     private Server server;
     private Map<String, Integer> nextIndex;//indice do próximo log entry a enviar para cada servidor
     private Map<String, Integer> matchIndex;//indice do último log entry replicado em cada servidor
+    private ThreadGroup talkToFollowers;
+    private Map<String, TalkToFollower> followers;
 
     public Leader(Server s, Map<String, Integer> nextIndex, Map<String, Integer> matchIndex) {
         this.server = s;
         this.nextIndex = nextIndex;
         this.matchIndex = matchIndex;
+        this.talkToFollowers = new ThreadGroup("followers");
+        this.followers = new HashMap<>();
     }
 
     @Override
     public void run() {
         System.out.println("Líder arrancou...");
+        createTalkToFollowers();
 
         /*Líder faz commit de uma "blank no-operation" entry no início de cada termo */
 //        server.appendLogEntry(new LogEntry(server.getCurrentTerm(), server.getCurrentLogIndex() + 1, "NO-OP", "noOperation", null, 0));
@@ -71,7 +75,6 @@ public class Leader implements Runnable {
                     commitIndex = server.getCommitIndex();
                 }
                 sendAppendEntries(new AppendEntry(server.getCurrentTerm(), server.getServerID(), prevLogIndex, prevLogTerm, entries, commitIndex, true, m));
-//                entries.clear();
 
             } 
 
@@ -105,14 +108,23 @@ public class Leader implements Runnable {
             } 
         }
     }
-
-    private void sendAppendEntries(AppendEntry ae) {
+    
+    private void createTalkToFollowers(){
         String serverToTalk;
+        TalkToFollower ttf;
         for (int i = 0; i < server.getServersProps().getHashMapProperties().size(); i++) {
             serverToTalk = "srv" + i;
             if (!server.getServerID().equals(serverToTalk)) {
-                new Thread(new TalkToFollower(server, Integer.parseInt(server.getServersProps().getServerAdress(serverToTalk)[1]), ae)).start();
+                ttf = new TalkToFollower(server, Integer.parseInt(server.getServersProps().getServerAdress(serverToTalk)[1]));
+                followers.put(serverToTalk, ttf);
+                new Thread(talkToFollowers, ttf).start();
             }
+        }
+    }
+
+    private void sendAppendEntries(AppendEntry ae) {
+        for(Map.Entry<String, TalkToFollower> t : followers.entrySet()){
+            t.getValue().storeAppendEntryInQueue(ae);
         }
         System.out.println("Enviado para todos os followers...");
     }
@@ -133,7 +145,7 @@ public class Leader implements Runnable {
                     prevLogTerm = server.getLog().get(follower.getValue() - 1).getTerm();
                 }
                 AppendEntry ae = new AppendEntry(server.getCurrentTerm(), server.getServerID(), prevLogIndex, prevLogTerm, entries, server.getCommitIndex(), true, null);
-                new Thread(new TalkToFollower(server, Integer.parseInt(server.getServersProps().getServerAdress(follower.getKey())[1]), ae)).start();
+                followers.get(follower.getKey()).storeAppendEntryInQueue(ae);
             }
 //            while (matchIndex.get(follower.getKey()) < server.getCurrentLogIndex()) {
 ////            System.out.println("Aguarda maioria..." + server.getServerQueue().size());
