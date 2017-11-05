@@ -5,7 +5,15 @@
  */
 package server;
 
-import java.util.Objects;
+import com.sun.org.apache.xerces.internal.utils.Objects;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -14,50 +22,58 @@ import java.util.Objects;
 public class Candidate implements Runnable {
 
     private Server server;
-    private int voteCounter;
+    private ServerSocket serverSocket;
+    private boolean stopCandidate;
 
-    public Candidate(Server server) {
+    public Candidate(Server server, ServerSocket serverSocket) {
         this.server = server;
-        this.voteCounter = 1;//vota nele próprio
+        this.serverSocket = serverSocket;
+        this.stopCandidate = false;
     }
 
     @Override
     public void run() {
-        System.out.println("O " + server.getServerID() + " estabeleceu-se como candidato...");
-        createTalkToOtherServers(createRequestVote());
-        int numServers = server.getServersProps().getHashMapProperties().size() / 2;
+        try {
+            while (!stopCandidate) {
 
-        boolean finishedElection = false;
-        while (finishedElection) {
-            if (!server.getServerQueue().isEmpty()) {
-                AppendEntry ae = server.getServerQueue().remove();
-                if (Objects.equals(ae.getType(), "REQUESTVOTE")) {
-                    //Se votar a favor
-                    if (ae.isSuccess()) {
-                        voteCounter++;
-                    }
+                Socket candidateSocket = serverSocket.accept();
+
+                if (!stopCandidate) {
+                    ObjectInputStream dis = new ObjectInputStream(candidateSocket.getInputStream());
+                    AppendEntry ae = (AppendEntry) dis.readObject();
+                    processAppendEntry(ae, candidateSocket);//executa o método que processa a AppendEntry de outro servidor
+                    System.out.println("Recebida AppendEntry. Sou o " + server.getServerID());
+                } else {
+                    candidateSocket.close();
                 }
             }
-            finishedElection = voteCounter > numServers;
-        }
-
-    }
-
-    private void createTalkToOtherServers(AppendEntry rv) {
-        String serverToTalk;
-        for (int i = 0; i < server.getServersProps().getHashMapProperties().size(); i++) {
-            serverToTalk = "srv" + i;
-            if (!server.getServerID().equals(serverToTalk)) {
-                new Thread(new RequestVote(server, Integer.parseInt(server.getServersProps().getServerAdress(serverToTalk)[1]), rv)).start();
+//            serverSocket.close();
+            if(Objects.equals(server.getState(), "FOLLOWER")){
+                new Thread(new Follower(server, serverSocket)).start();
+                
+            } else if(Objects.equals(server.getState(), "LEADER")){
+                new Thread(new Leader(server, server.getNextIndex(), server.getNextIndex())).start();
             }
+            
+            
+
+        } catch (IOException ex) {
+            System.err.println(server.getServerID() + " - Erro no estabelecimento da ligação com o líder \n" + ex.getLocalizedMessage());
+
+        } catch (ClassNotFoundException ex) {
+            System.err.println("Erro na conversão da classe Request\n" + ex.getLocalizedMessage());
+        }
+
+    }
+
+    private void processAppendEntry(AppendEntry ae, Socket candidateSocket) {
+        if (ae != null) {
+            server.addCandidateSockets(ae.getLeaderId(), candidateSocket);
+            server.getServerQueue().add(ae);
         }
     }
 
-    private AppendEntry createRequestVote() {
-        server.incrementCurrentTerm();
-        int lastLogIndex = server.getCurrentLogIndex();
-        int lastLogTerm = server.getLog().get(server.getCurrentLogIndex()).getTerm();
-        AppendEntry rv = new AppendEntry(server.getCurrentTerm(), server.getServerID(), lastLogIndex, lastLogTerm, null, 0, true, null, "REQUESTVOTE");
-        return rv;
+    public void stopCandidate() {
+        this.stopCandidate = true;
     }
 }

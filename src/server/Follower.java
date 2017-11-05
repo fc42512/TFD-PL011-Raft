@@ -35,14 +35,15 @@ public class Follower implements Runnable {
                 Socket followerSocket = serverSocket.accept();
                 if (!stopFollower) {
                     new Thread(new FollowerProcess(server, followerSocket, this)).start();
-                }
-                else{
+                } else {
                     followerSocket.close();
                 }
 
             }
-            serverSocket.close();
-//            followerThreads.destroy();
+//            serverSocket.close();
+            Candidate c = new Candidate(server, serverSocket);
+            new Thread(new CandidateProcess(server, c)).start();
+            new Thread(c).start();
 
         } catch (IOException ex) {
             System.err.println(server.getServerID() + " - Erro no estabelecimento da ligação com o líder \n" + ex.getLocalizedMessage());

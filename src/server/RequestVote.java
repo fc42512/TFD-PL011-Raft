@@ -17,14 +17,16 @@ import java.net.Socket;
 public class RequestVote implements Runnable {
 
     private Server server;
+    private String id;
     private int otherServerPort;
     private AppendEntry requestVote;
     private boolean isFinished;
 
-    public RequestVote(Server server, int otherServerPort, AppendEntry requestVote) {
+    public RequestVote(Server server, int otherServerPort, AppendEntry requestVote, String id) {
         this.server = server;
         this.otherServerPort = otherServerPort;
         this.requestVote = requestVote;
+        this.id = id;
         this.isFinished = false;
     }
 
@@ -44,7 +46,7 @@ public class RequestVote implements Runnable {
 
                 ois = new ObjectInputStream(socket.getInputStream());
                 AppendEntry response = (AppendEntry) ois.readObject();
-                if (response != null) {
+                if (response != null && !isFinished) {
                     server.getServerQueue().add(response);
                     System.out.println("Enviado para o candidato de novo...");
                 }
@@ -66,4 +68,13 @@ public class RequestVote implements Runnable {
             }
         }
     }
+    
+    public void cancelRequestVote(){
+        this.isFinished = true;
+    }
+
+    public String getId() {
+        return id;
+    }
+    
 }

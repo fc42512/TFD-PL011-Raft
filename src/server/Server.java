@@ -9,6 +9,7 @@ import common.Message;
 import common.PropertiesManager;
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,7 +29,6 @@ public class Server implements Runnable {
     private PropertiesManager clientsProps;
     private int ID_MESSAGE = 0;
     private String state;
-    private ElectionTimeOut electionTimeOut;
 
     private int currentTerm;
     private String votedFor; //candidateId que recebeu o voto no termo atual (null se não há)
@@ -40,6 +40,7 @@ public class Server implements Runnable {
     private LinkedBlockingQueue<AppendEntry> serverQueue;
     private HashMap<String, Message> stateMachine;
     private HashMap<Integer, ProcessClient> clientSockets;
+    private HashMap<String, Socket> candidateSockets;
 
     public Server(String id, PropertiesManager serversProps, PropertiesManager clientsProps) {
         this.serverID = id;
@@ -59,6 +60,7 @@ public class Server implements Runnable {
         serverQueue = new LinkedBlockingQueue<>();
         stateMachine = new HashMap<>();
         clientSockets = new HashMap<>();
+        candidateSockets = new HashMap<>();
     }
 
     @Override
@@ -164,9 +166,14 @@ public class Server implements Runnable {
         return serverQueue;
     }
 
-    public ProcessClient getClientSocket(int id) {
+    public ProcessClient getProcessClientSocket(int id) {
         return clientSockets.get(id);
     }
+
+    public Socket getCandidateSocket(String id) {
+        return candidateSockets.get(id);
+    }
+    
 
     /**
      * *******************************************************************
@@ -185,8 +192,12 @@ public class Server implements Runnable {
         return log.size() - 1;
     }
 
-    public void addSocket(int id, ProcessClient processClient) {
+    public void addProcessClientSockets(int id, ProcessClient processClient) {
         clientSockets.put(id, processClient);
+    }
+    
+    public void addCandidateSockets(String id, Socket candidateSocket) {
+        candidateSockets.put(id, candidateSocket);
     }
 
     public void appendLogEntry(LogEntry logEntry) {
@@ -197,7 +208,7 @@ public class Server implements Runnable {
         clientQueue.add(m);
     }
 
-    private Map<String, Integer> getNextIndex() {
+    public Map<String, Integer> getNextIndex() {
         Map<String, Integer> nextIndex = new HashMap<>();
         int index = log.size();
         for (int i = 0; i < serversProps.getHashMapProperties().size(); i++) {
@@ -218,7 +229,7 @@ public class Server implements Runnable {
         if (logEntry.getSource() != 0) {
             if (Objects.equals(state, "LEADER")) {
                 try {
-                    getClientSocket(logEntry.getSource()).sendMessageToClient(result);//responde ao cliente
+                    getProcessClientSocket(logEntry.getSource()).sendMessageToClient(result);//responde ao cliente
                     logEntry.setSentToClient(true);
                 } catch (IOException ex) {
                     System.err.println("Erro na resposta ao cliente pelo líder \n" + ex.getLocalizedMessage());

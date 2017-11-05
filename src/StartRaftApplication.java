@@ -4,8 +4,6 @@ import common.PropertiesManager;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import server.Server;
 
 /*

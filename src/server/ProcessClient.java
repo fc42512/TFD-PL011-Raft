@@ -10,7 +10,6 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.net.Socket;
 import java.util.Objects;
 
@@ -78,7 +77,7 @@ public class ProcessClient implements Runnable {
         Message response = null;
         if (request != null) {
             if (Objects.equals(server.getState(), "LEADER")) {
-                server.addSocket(request.getSource(), this);
+                server.addProcessClientSockets(request.getSource(), this);
                 server.appendMessageClientQueue(request);
 
             } else {

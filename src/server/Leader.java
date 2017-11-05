@@ -51,7 +51,7 @@ public class Leader implements Runnable {
                 /* Líder verifica se um dado pedido já foi executado na máquina de estados e envia para o cliente */
                 if (server.getStateMachineResult(m.getId() + m.getSource()) != null) {
                     try {
-                        server.getClientSocket(m.getSource()).sendMessageToClient(server.getStateMachineResult(m.getId() + m.getSource()));//responde ao cliente
+                        server.getProcessClientSocket(m.getSource()).sendMessageToClient(server.getStateMachineResult(m.getId() + m.getSource()));//responde ao cliente
                     } 
                     catch (IOException ex) {
                         System.err.println("Erro na resposta ao cliente pelo líder \n" + ex.getLocalizedMessage());
