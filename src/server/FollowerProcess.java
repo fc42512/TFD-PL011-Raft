@@ -11,8 +11,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -24,6 +22,7 @@ public class FollowerProcess implements Runnable {
     private Socket liderSocket;
     private boolean stopFollowerProcess;
     private ElectionTimeOut electionTimeOut;
+    
 
     public FollowerProcess(Server server, Socket liderSocket, Follower follower) {
         this.server = server;
@@ -35,35 +34,28 @@ public class FollowerProcess implements Runnable {
     @Override
     public void run() {
         try {
-
-            this.liderSocket.setReuseAddress(true);
             ObjectInputStream dis = null;
             while (!stopFollowerProcess) {
 
                 dis = new ObjectInputStream(liderSocket.getInputStream());
-                AppendEntry response = processAppendEntries(dis.readObject());//executa o método que processa ao appendEntries
-                electionTimeOut.cancelElectionTimer();
-                electionTimeOut.run();
-                System.out.println("Recebida msg");
-
+                Object obj = dis.readObject();
                 if (!stopFollowerProcess) {
+                    AppendEntry response = processAppendEntries(obj);//executa o método que processa ao appendEntries
+                    electionTimeOut.cancelElectionTimer();
+                    electionTimeOut.run();
+                    System.out.println("Recebida msg");
+
                     sendMessageToLeader(response, liderSocket);
                     System.out.println("Enviada msg");
                 }
             }
-            dis.close();
             liderSocket.close();
-            
-            
-            
-            
 
         } catch (IOException ex) {
             System.err.println(server.getServerID() + " - Erro no estabelecimento da ligação com o líder \n" + ex.getLocalizedMessage());
         } catch (ClassNotFoundException ex) {
             System.err.println("Erro na conversão da classe Request\n" + ex.getLocalizedMessage());
         } 
-        
     }
 
     private void sendMessageToLeader(AppendEntry ae, Socket s) throws IOException {
@@ -71,11 +63,6 @@ public class FollowerProcess implements Runnable {
         ObjectOutputStream osw = new ObjectOutputStream(bos);
         osw.writeObject(ae);//Envia a mensagem
         osw.flush();
-        if (stopFollowerProcess) {
-            osw.close();
-            bos.close();
-            s.close();//Fecha a ligação
-        }
     }
 
     private AppendEntry processAppendEntries(Object obj) {
@@ -126,13 +113,6 @@ public class FollowerProcess implements Runnable {
         server.setCommitIndex(ae.getLeaderCommit());
     }
 
-//    private void addNewLogEntries(AppendEntry ae) {
-//        for (LogEntry le : ae.getEntries()) {
-//            server.getLog().set(le.getIndex(), le);
-//        }
-//        server.setCurrentTerm(ae.getTerm());
-//        server.setCommitIndex(ae.getLeaderCommit());
-//    }
     private void deleteConflictEntries(int index) {
         int maxIndex = server.getLog().size() - 1;
         for (int i = maxIndex; i > index; i--) {

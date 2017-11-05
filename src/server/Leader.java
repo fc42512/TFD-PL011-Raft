@@ -124,6 +124,7 @@ public class Leader implements Runnable {
     }
 
     public void sendAppendEntries(AppendEntry ae) {
+
         for(Map.Entry<String, TalkToFollower> t : followers.entrySet()){
             t.getValue().storeAppendEntryInQueue(ae);
         }

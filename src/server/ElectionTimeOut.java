@@ -35,7 +35,7 @@ public class ElectionTimeOut {
             public void run() {
                 
                 System.out.println("Atingi o timeout!");
-                follower.shutdownFollower();
+                follower.stopFollower();
                 followerProcess.stopFollowerProcess();
                 server.setState("CANDIDATE");// Follower passa para o estado de Candidato
                 cancelElectionTimer();
@@ -58,6 +58,7 @@ public class ElectionTimeOut {
         }
     }
     
+    /* Gera um número aleatório entre 150 e 299 */
     private int getRandomTime() {
         Random rnd = new Random();
         return rnd.nextInt(150)+150;

@@ -7,23 +7,22 @@ package server;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.net.Socket;
 
 /**
  *
  * @author João
  */
-public class Follower extends Thread {
+public class Follower implements Runnable {
 
     private Server server;
     private ServerSocket serverSocket;
     private boolean stopFollower;
-    private ThreadGroup followerThreads;
 
     public Follower(Server s, ServerSocket ss) {
         this.server = s;
         this.serverSocket = ss;
         this.stopFollower = false;
-        this.followerThreads = new ThreadGroup("followerThreads");
     }
 
     @Override
@@ -32,9 +31,14 @@ public class Follower extends Thread {
             /*Follower faz commit de uma "blank no-operation" entry no início */
 //            server.appendLogEntry(new LogEntry(server.getCurrentTerm(), server.getCurrentLogIndex()+1, "NO-OP", "noOperation", null, 0));
             while (!stopFollower) {
-                
-                FollowerProcess fp = new FollowerProcess(server, serverSocket.accept(), this);
-                new Thread(followerThreads, fp).start();
+
+                Socket followerSocket = serverSocket.accept();
+                if (!stopFollower) {
+                    new Thread(new FollowerProcess(server, followerSocket, this)).start();
+                }
+                else{
+                    followerSocket.close();
+                }
 
             }
             serverSocket.close();
@@ -48,8 +52,5 @@ public class Follower extends Thread {
 
     public void stopFollower() {
         this.stopFollower = true;
-    }
-    public void shutdownFollower(){
-        this.stop();
     }
 }

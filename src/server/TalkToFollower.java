@@ -10,8 +10,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -20,14 +18,14 @@ import java.util.logging.Logger;
 public class TalkToFollower implements Runnable {
 
     private Server server;
-    private int followerPort;
+    private int otherServerPort;
     private AppendEntry response;
     private LinkedBlockingQueue<AppendEntry> appendEntriesToSend;
     private boolean connectionAlive;
 
-    public TalkToFollower(Server server, int followerPort) {
+    public TalkToFollower(Server server, int otherServerPort) {
         this.server = server;
-        this.followerPort = followerPort;
+        this.otherServerPort = otherServerPort;
         this.response = null;
         this.appendEntriesToSend = new LinkedBlockingQueue<>();
         this.connectionAlive = false;
@@ -37,47 +35,47 @@ public class TalkToFollower implements Runnable {
     @Override
     public void run() {
         Socket socket = null;
+        ObjectOutputStream oos = null;
+        ObjectInputStream ois = null;
         while (!connectionAlive) {
             try {
-                socket = new Socket("localhost", followerPort);
+                socket = new Socket("localhost", otherServerPort);
                 connectionAlive = true;
-                while (true) {
+                while (connectionAlive) {
                     if (!appendEntriesToSend.isEmpty()) {
-                        ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
+                        oos = new ObjectOutputStream(socket.getOutputStream());
                         oos.writeObject(appendEntriesToSend.remove());
                         oos.flush();
                         System.out.println("Enviado para o follower...");
 
-                        ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
-                        response = (AppendEntry) ois.readObject();
-                        if (response != null) {
-                            server.getServerQueue().add(response);
-                            System.out.println("Enviado para o líder de novo...");
+                        if (socket.isConnected()) {
+                            ois = new ObjectInputStream(socket.getInputStream());
+                            response = (AppendEntry) ois.readObject();
+                            if (response != null) {
+                                server.getServerQueue().add(response);
+                                System.out.println("Enviado para o líder de novo...");
+                            }
+                        } else {
+                            oos.close();
+                            ois.close();
+                            socket.close();
+                            connectionAlive = false;
+                            appendEntriesToSend.clear();
                         }
-//                        oos.close();
-//                        ois.close();
                     }
                 }
-            
+
             } catch (IOException ex) {
-                System.err.println("O follower contactado pelo líder " + server.getLeaderID() + " não está disponível! \n" + ex.getLocalizedMessage());
+                System.err.println("O servidor contactado pelo " + server.getState() + " " + server.getServerID() + " não está disponível! \n" + ex.getLocalizedMessage());
                 connectionAlive = false;
-                try {
-                    if(socket != null){
-                        socket.close();
-                    }
-                } catch (IOException ex1) {
-                    
-                }
                 appendEntriesToSend.clear();
                 try {
-                    Thread.sleep(5000);
+                    Thread.sleep(2000);
                 } catch (InterruptedException ex1) {
-                    System.err.println("O follower contactado pelo líder " + server.getLeaderID() + " não está disponível! Estou à espera!!!\n" + ex.getLocalizedMessage());
+                    System.err.println("O servidor contactado pelo " + server.getState() + " " + server.getServerID() + " não está disponível! Estou à espera!!!\n" + ex1.getLocalizedMessage());
                 }
             } catch (ClassNotFoundException ex) {
                 System.err.println("Erro na conversão da classe \n" + ex.getLocalizedMessage());
-
             }
         }
     }

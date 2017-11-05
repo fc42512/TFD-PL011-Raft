@@ -28,6 +28,7 @@ public class Server implements Runnable {
     private PropertiesManager clientsProps;
     private int ID_MESSAGE = 0;
     private String state;
+    private ElectionTimeOut electionTimeOut;
 
     private int currentTerm;
     private String votedFor; //candidateId que recebeu o voto no termo atual (null se não há)
