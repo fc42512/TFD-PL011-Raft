@@ -18,8 +18,7 @@ import server.Server;
 public class StartRaftApplication {
 
     private static Map<String, Server> servidores;
-    private static Map<String, Thread> threadsServidores;
-    private static Map<Integer, Thread> clientes;
+    private static Map<Integer, Client> clientes;
     private static PropertiesManager serversProps;
     private static PropertiesManager clientsProps;
 
@@ -27,7 +26,6 @@ public class StartRaftApplication {
 
         Scanner sc = new Scanner(System.in);
         servidores = new HashMap<>();
-        threadsServidores = new HashMap<>();
         clientes = new HashMap<>();
         serversProps = new PropertiesManager("servidor");
         clientsProps = new PropertiesManager("cliente");
@@ -75,35 +73,26 @@ public class StartRaftApplication {
     public static void startServer(int id) {
         String serverID = "srv" + id;
         Server server = new Server(serverID, serversProps, clientsProps);
-        Thread serverThread = new Thread(server);
-        serverThread.start();
+        new Thread(server).start();
         servidores.put(serverID, server);
-        threadsServidores.put(serverID, serverThread);
-
     }
 
     /* Parar Servidor */
     public static void stopServer(int id) {
         servidores.get("srv" + id).stopServer();
-        if (threadsServidores.get("srv" + id).isAlive()) {
-            System.out.println("O servidor " + id + " foi desligado!\n");
-        }
-
+        System.out.println("O servidor " + id + " foi desligado!\n");
     }
 
     /* Iniciar Clientes */
     public static void startClient(int id) {
-        Thread clientThread = new Thread(new Client(id, clientsProps));
-        clientThread.start();
-        clientes.put(id, clientThread);
-
+        Client c = new Client(id, clientsProps);
+        new Thread(c).start();
+        clientes.put(id, c);
     }
 
     /* Parar Cliente */
     public static void stopClient(int id) {
-        clientes.get(id).interrupt();
-        if (!clientes.get(id).isAlive()) {
-            System.out.println("O cliente " + id + " foi desligado!\n");
-        }
+        clientes.get(id).stopClient();
+        System.out.println("O cliente " + id + " foi desligado!\n");
     }
 }

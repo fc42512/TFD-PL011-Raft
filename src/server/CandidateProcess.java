@@ -11,8 +11,6 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -56,15 +54,17 @@ public class CandidateProcess implements Runnable {
                         }
                         removeTalkToOtherServers(ae.getLeaderId());
 
-                    } else if (Objects.equals(ae.getType(), "HEARTBEAT")) {
-                        electionTimeOut.cancelElectionTimer();
-                        server.setState("FOLLOWER");// Candidate volta ao estado de Follower
-                        restartCandidateProcess();
-                        AppendEntry hr = new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, server.getLastApplied(), false, null, "HEARTBEAT");
-                        try {
-                            sendAppendEntryToServer(hr, server.getCandidateSocket(ae.getLeaderId()));
-                        } catch (IOException ex) {
-                            System.err.println(server.getServerID() + " - Erro no estabelecimento da ligação com o servidor \n" + ex.getLocalizedMessage());
+                    } else if (Objects.equals(ae.getType(), "HEARTBEAT") || Objects.equals(ae.getType(), "APPENDENTRY")) {
+                        if (ae.getTerm() > server.getCurrentTerm()) {
+                            electionTimeOut.cancelElectionTimer();
+                            server.setState("FOLLOWER");// Candidate volta ao estado de Follower
+                            restartCandidateProcess();
+                            AppendEntry hr = new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, server.getLastApplied(), false, null, "HEARTBEAT");
+                            try {
+                                sendAppendEntryToServer(hr, server.getCandidateSocket(ae.getLeaderId()));
+                            } catch (IOException ex) {
+                                System.err.println(server.getServerID() + " - Erro no estabelecimento da ligação com o servidor \n" + ex.getLocalizedMessage());
+                            }
                         }
                     }
                 }
@@ -106,9 +106,9 @@ public class CandidateProcess implements Runnable {
     private AppendEntry createRequestVote() {
         int lastLogIndex, lastLogTerm;
         server.incrementCurrentTerm();
-        if (server.getCurrentLogIndex() == 0) {
+        if (server.getCurrentLogIndex() == -1) {
             lastLogIndex = -1;
-            lastLogTerm = -1;
+            lastLogTerm = 0;
         } else {
             lastLogIndex = server.getCurrentLogIndex();
             lastLogTerm = server.getLog().get(server.getCurrentLogIndex()).getTerm();
@@ -120,7 +120,7 @@ public class CandidateProcess implements Runnable {
     private void sendAppendEntryToServer(AppendEntry ae, Socket s) throws IOException {
         BufferedOutputStream bos = new BufferedOutputStream(s.getOutputStream());
         ObjectOutputStream osw = new ObjectOutputStream(bos);
-        osw.writeObject(ae);//Envia a mensagem
+        osw.writeObject(ae);//Envia o appendentry
         osw.flush();
         osw.close();
         bos.close();

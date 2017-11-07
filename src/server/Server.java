@@ -36,6 +36,7 @@ public class Server implements Runnable {
     private int commitIndex;//indice do último log entry commitado
     private int lastApplied;//indice do último log entry executado pela máquina de estados
 
+
     private LinkedBlockingQueue<Message> clientQueue;
     private LinkedBlockingQueue<AppendEntry> serverQueue;
     private HashMap<String, Message> stateMachine;
@@ -138,6 +139,18 @@ public class Server implements Runnable {
         this.currentTerm = currentTerm;
     }
 
+    public String getVotedFor() {
+        return votedFor;
+    }
+
+    public void setVotedFor(String votedFor) {
+        this.votedFor = votedFor;
+    }
+    
+    public void resetVotedFor() {
+        this.votedFor = null;
+    }
+    
     public int getCommitIndex() {
         return commitIndex;
     }

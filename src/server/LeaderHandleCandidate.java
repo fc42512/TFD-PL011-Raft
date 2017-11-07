@@ -5,7 +5,6 @@
  */
 package server;
 
-
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.ServerSocket;
@@ -16,43 +15,35 @@ import java.util.Objects;
  *
  * @author João
  */
-public class Candidate implements Runnable {
+public class LeaderHandleCandidate implements Runnable {
 
     private Server server;
     private ServerSocket serverSocket;
-    private boolean stopCandidate;
+    private boolean stopLeaderHandleCandidate;
 
-    public Candidate(Server server, ServerSocket serverSocket) {
+    public LeaderHandleCandidate(Server server, ServerSocket serverSocket) {
         this.server = server;
         this.serverSocket = serverSocket;
-        this.stopCandidate = false;
+        this.stopLeaderHandleCandidate = false;
     }
 
     @Override
     public void run() {
         try {
-            while (!stopCandidate) {
+            while (!stopLeaderHandleCandidate) {
 
-                Socket candidateSocket = serverSocket.accept();
+                Socket leaderHandleCandidateSocket = serverSocket.accept();
 
-                if (!stopCandidate) {
-                    ObjectInputStream dis = new ObjectInputStream(candidateSocket.getInputStream());
+                if (!stopLeaderHandleCandidate) {
+                    ObjectInputStream dis = new ObjectInputStream(leaderHandleCandidateSocket.getInputStream());
                     AppendEntry ae = (AppendEntry) dis.readObject();
-                    processAppendEntry(ae, candidateSocket);//executa o método que processa a AppendEntry de outro servidor
+                    processAppendEntry(ae, leaderHandleCandidateSocket);//executa o método que processa a AppendEntry de outro servidor
                     System.out.println("Recebida AppendEntry. Sou o " + server.getServerID());
                 } else {
-                    candidateSocket.close();
+                    leaderHandleCandidateSocket.close();
                 }
             }
 //            serverSocket.close();
-            if(Objects.equals(server.getState(), "FOLLOWER")){
-                new Thread(new Follower(server, serverSocket)).start();
-                
-            } else if(Objects.equals(server.getState(), "LEADER")){
-                new Thread(new Leader(server, server.getNextIndex(), server.getNextIndex())).start();
-            }
-            
-            
 
         } catch (IOException ex) {
             System.err.println(server.getServerID() + " - Erro no estabelecimento da ligação com o líder \n" + ex.getLocalizedMessage());
@@ -63,14 +54,16 @@ public class Candidate implements Runnable {
 
     }
 
-    private void processAppendEntry(AppendEntry ae, Socket candidateSocket) {
+    private void processAppendEntry(AppendEntry ae, Socket leaderHandleCandidateSocket) {
         if (ae != null) {
-            server.addCandidateSockets(ae.getLeaderId(), candidateSocket);
-            server.getServerQueue().add(ae);
+            if (Objects.equals(ae.getType(), "REQUESTVOTE")) {
+                server.addCandidateSockets(ae.getLeaderId(), leaderHandleCandidateSocket);
+                server.getServerQueue().add(ae);
+            }
         }
     }
 
-    public void stopCandidate() {
-        this.stopCandidate = true;
+    public void stopLeaderHandleCandidate() {
+        this.stopLeaderHandleCandidate = true;
     }
 }

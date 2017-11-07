@@ -12,15 +12,17 @@ package server;
 public class HeartBeat implements Runnable {
 
     private Leader leader;
+    private boolean stopHeartBeat;
 
     public HeartBeat(Leader leader) {
         this.leader = leader;
+        this.stopHeartBeat = false;
     }
 
     @Override
     public void run() {
         try {
-            while (true) {
+            while (!stopHeartBeat) {
                 AppendEntry ae = new AppendEntry(leader.getServer().getCurrentTerm(), leader.getServer().getServerID(), 0, 0, null, leader.getServer().getCommitIndex(), true, null, "HEARTBEAT");
                 leader.sendAppendEntries(ae);
                 System.out.println("Enviados os heartbeats para todos os followers...");
@@ -31,5 +33,8 @@ public class HeartBeat implements Runnable {
             System.out.println("Erro no envio dos heartbeats!");
         }
     }
-
+    
+    public void stopHeartBeat() {
+        this.stopHeartBeat = true;
+    }
 }

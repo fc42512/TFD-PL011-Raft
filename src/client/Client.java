@@ -10,6 +10,8 @@ import common.Message;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -24,6 +26,7 @@ public class Client implements Runnable {
     private String leaderID;
     private Message request;
     private Message response;
+    private boolean stopClient;
 
     public Client(int id, PropertiesManager props) {
         this.id = id;
@@ -31,6 +34,7 @@ public class Client implements Runnable {
         this.ID_REQUEST = 0;
         this.leaderID = null;
         this.response = null;
+        this.stopClient = false;
         
         System.out.println("O cliente " + id + " arrancou!");
         
@@ -42,10 +46,17 @@ public class Client implements Runnable {
         ClientRequest cr;
         
         int i = 0; 
-        while (i < 50) {
+        while (i < 50 && !stopClient) {
+            
+            try {
+                Thread.sleep(2500);
+            } catch (InterruptedException ex) {
+                System.err.println("Cliente foi interrompido!");
+            }
+            
             cr = new ClientRequest(this);
             setRequest();
-            while (!cr.isFinishedRequest()) {
+            while (!cr.isFinishedRequest() && !stopClient) {
                 try {
                     if (leaderID == null) {
                         leaderID = getRandomServer();
@@ -93,5 +104,7 @@ public class Client implements Runnable {
         Random rnd = new Random();
         return "srv" + rnd.nextInt(props.getHashMapProperties().size());
     }
-
+    public void stopClient(){
+        this.stopClient = true;
+    }
 }

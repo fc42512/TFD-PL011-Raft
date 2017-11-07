@@ -6,10 +6,16 @@
 package server;
 
 import common.Message;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -81,30 +87,48 @@ public class Leader implements Runnable {
 
             else if(!server.getServerQueue().isEmpty()) {
                 AppendEntry ae = server.getServerQueue().remove();
-                if (ae.isSuccess()) {
-                    le = server.getLog().get(ae.getPrevLogIndex());
-                    if (!le.isCommited() && (ae.getPrevLogIndex() >= server.getCommitIndex())) {
-                        le.incrementMajority();//incremeta para tantar fazer maioria numa dada log entry
-                        if (le.getMajority() > numFollowers) {
-                            server.setCommitIndex(ae.getPrevLogIndex());//actualiza último indice comitado
-                            System.out.println("Temos maioria...");
-
-                            /* Líder executa o comando na sua máquina de estados */
-                            System.out.println("Executa na máquina de estados...");
-                            server.applyNewEntries();//executa comando na máquina de estados
-                            
-                            matchIndex.put(ae.getLeaderId(), ae.getLeaderCommit());//actualiza o ultimo indice commitado pelo follower
-                            nextIndex.put(ae.getLeaderId(), ae.getLeaderCommit() + 1);//actualiza o proximo indice a enviar para o follower
-                            
-                            /* Líder resolve as inconsistências dos followers */
-                            resolveConflictingEntries();
-
+                AppendEntry rv = null;
+                if(Objects.equals(ae.getType(),"REQUESTVOTE")){
+                    if(ae.getTerm() < server.getCurrentTerm()){
+                        rv = new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, false, null, "REQUESTVOTE");
+                    }
+                    else {
+                        if(server.getVotedFor() == null || Objects.equals(server.getVotedFor(), ae.getLeaderId())){
+                            if(ae.getPrevLogIndex() >= server.getCurrentLogIndex()){
+                                rv = new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, true, null, "REQUESTVOTE");
+                            }
                         }
                     }
+                    try {
+                        sendRequestVoteToCandidate(rv, server.getCandidateSocket(ae.getLeaderId()));
+                    } catch (IOException ex) {
+                        System.out.println("Falha no reenvio do requestVote pelo lider" + server.getServerID());
+                    }
+                } else{
+                    if (ae.isSuccess()) {
+                        le = server.getLog().get(ae.getPrevLogIndex());
+                        if (!le.isCommited() && (ae.getPrevLogIndex() >= server.getCommitIndex())) {
+                            le.incrementMajority();//incremeta para tantar fazer maioria numa dada log entry
+                            if (le.getMajority() > numFollowers) {
+                                server.setCommitIndex(ae.getPrevLogIndex());//actualiza último indice comitado
+                                System.out.println("Temos maioria...");
 
-                } else {
-                    matchIndex.put(ae.getLeaderId(), ae.getLeaderCommit());//actualiza o ultimo indice commitado pelo follower
-                    nextIndex.put(ae.getLeaderId(), ae.getLeaderCommit() + 1);//actualiza o proximo indice a enviar para o follower
+                                /* Líder executa o comando na sua máquina de estados */
+                                System.out.println("Executa na máquina de estados...");
+                                server.applyNewEntries();//executa comando na máquina de estados
+
+                                matchIndex.put(ae.getLeaderId(), ae.getLeaderCommit());//actualiza o ultimo indice commitado pelo follower
+                                nextIndex.put(ae.getLeaderId(), ae.getLeaderCommit() + 1);//actualiza o proximo indice a enviar para o follower
+
+                                /* Líder resolve as inconsistências dos followers */
+                                resolveConflictingEntries();
+                            }
+                        }
+
+                    } else {
+                        matchIndex.put(ae.getLeaderId(), ae.getLeaderCommit());//actualiza o ultimo indice commitado pelo follower
+                        nextIndex.put(ae.getLeaderId(), ae.getLeaderCommit() + 1);//actualiza o proximo indice a enviar para o follower
+                    }
                 }
             } 
         }
@@ -158,6 +182,16 @@ public class Leader implements Runnable {
 //                }
 //            }
         }
+    }
+    
+    private void sendRequestVoteToCandidate(AppendEntry rv, Socket s) throws IOException {
+        BufferedOutputStream bos = new BufferedOutputStream(s.getOutputStream());
+        ObjectOutputStream osw = new ObjectOutputStream(bos);
+        osw.writeObject(rv);//Envia o appendentry
+        osw.flush();
+        osw.close();
+        bos.close();
+        s.close();//Fecha a ligação
     }
     
     public Server getServer() {
