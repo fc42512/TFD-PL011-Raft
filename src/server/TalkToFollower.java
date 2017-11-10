@@ -10,6 +10,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -22,6 +24,7 @@ public class TalkToFollower implements Runnable {
     private AppendEntry response;
     private LinkedBlockingQueue<AppendEntry> appendEntriesToSend;
     private boolean connectionAlive;
+    private boolean stopTalkToFollower;
 
     public TalkToFollower(Server server, int otherServerPort) {
         this.server = server;
@@ -29,7 +32,7 @@ public class TalkToFollower implements Runnable {
         this.response = null;
         this.appendEntriesToSend = new LinkedBlockingQueue<>();
         this.connectionAlive = false;
-
+        this.stopTalkToFollower = false;
     }
 
     @Override
@@ -37,11 +40,11 @@ public class TalkToFollower implements Runnable {
         Socket socket = null;
         ObjectOutputStream oos = null;
         ObjectInputStream ois = null;
-        while (!connectionAlive) {
+        while (!connectionAlive && !stopTalkToFollower) {
             try {
                 socket = new Socket("localhost", otherServerPort);
                 connectionAlive = true;
-                while (connectionAlive) {
+                while (connectionAlive && !stopTalkToFollower) {
                     if (!appendEntriesToSend.isEmpty()) {
                         oos = new ObjectOutputStream(socket.getOutputStream());
                         oos.writeObject(appendEntriesToSend.remove());
@@ -51,7 +54,7 @@ public class TalkToFollower implements Runnable {
                         if (socket.isConnected()) {
                             ois = new ObjectInputStream(socket.getInputStream());
                             response = (AppendEntry) ois.readObject();
-                            if (response != null) {
+                            if (response != null && !stopTalkToFollower) {
                                 server.getServerQueue().add(response);
                                 System.out.println("Enviado para o líder de novo...");
                             }
@@ -78,9 +81,18 @@ public class TalkToFollower implements Runnable {
                 System.err.println("Erro na conversão da classe \n" + ex.getLocalizedMessage());
             }
         }
+//        try {
+//            socket.close();
+//        } catch (IOException ex) {
+//            System.err.println("Erro no fecho do Socket do TalkToFollower \n" + ex.getLocalizedMessage());
+//        }
     }
 
     public void storeAppendEntryInQueue(AppendEntry a) {
         this.appendEntriesToSend.add(a);
+    }
+    
+    public void stopTalkToFollower(){
+        this.stopTalkToFollower = true;
     }
 }

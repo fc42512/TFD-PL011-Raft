@@ -18,15 +18,21 @@ public class Follower implements Runnable {
     private Server server;
     private ServerSocket serverSocket;
     private boolean stopFollower;
+    private FollowerProcess threadFollowerProcess;
 
     public Follower(Server s, ServerSocket ss) {
         this.server = s;
         this.serverSocket = ss;
         this.stopFollower = false;
+        this.threadFollowerProcess = null;
+        
     }
 
     @Override
     public void run() {
+        server.setThreadFollower(this);
+        server.resetThreadLeader();
+        server.resetThreadCandidate();
         try {
             /*Follower faz commit de uma "blank no-operation" entry no início */
 //            server.appendLogEntry(new LogEntry(server.getCurrentTerm(), server.getCurrentLogIndex()+1, "NO-OP", "noOperation", null, 0));
@@ -34,7 +40,8 @@ public class Follower implements Runnable {
 
                 Socket followerSocket = serverSocket.accept();
                 if (!stopFollower) {
-                    new Thread(new FollowerProcess(server, followerSocket, this)).start();
+                    threadFollowerProcess = new FollowerProcess(server, followerSocket, this);
+                    new Thread(threadFollowerProcess).start();
                 } else {
                     followerSocket.close();
                 }
@@ -53,5 +60,8 @@ public class Follower implements Runnable {
 
     public void stopFollower() {
         this.stopFollower = true;
+        if(this.threadFollowerProcess != null){
+            this.threadFollowerProcess.stopFollowerProcess();
+        }
     }
 }

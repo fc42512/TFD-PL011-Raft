@@ -29,6 +29,7 @@ public class CandidateProcess implements Runnable {
         this.server = server;
         this.candidate = candidate;
         this.voteCounter = 1;//vota nele próprio
+        this.server.setVotedFor(this.server.getServerID());
         this.restartCandidateProcess = false;
         this.electionTimeOut = new ElectionTimeOutCandidate(server, this);
         this.talkToOtherServers = new ArrayList<>();
@@ -51,10 +52,10 @@ public class CandidateProcess implements Runnable {
                         //Se votar a favor
                         if (ae.isSuccess()) {
                             voteCounter++;
-                        }
-                        removeTalkToOtherServers(ae.getLeaderId());
+                            removeTalkToOtherServers(ae.getLeaderId());
+                        }                       
 
-                    } else if (Objects.equals(ae.getType(), "HEARTBEAT") || Objects.equals(ae.getType(), "APPENDENTRY")) {
+                    } else if (Objects.equals(ae.getType(), "HEARTBEAT") || Objects.equals(ae.getType(), "APPENDENTRY") || Objects.equals(ae.getType(), "REQUESTVOTE")) {
                         if (ae.getTerm() > server.getCurrentTerm()) {
                             electionTimeOut.cancelElectionTimer();
                             server.setState("FOLLOWER");// Candidate volta ao estado de Follower
@@ -78,6 +79,7 @@ public class CandidateProcess implements Runnable {
         electionTimeOut.cancelElectionTimer();
         shutdownTalkToOtherServers();
         candidate.stopCandidate();
+        server.resetVotedFor();
     }
 
     private void createTalkToOtherServers(AppendEntry ae) {
@@ -113,7 +115,7 @@ public class CandidateProcess implements Runnable {
             lastLogIndex = server.getCurrentLogIndex();
             lastLogTerm = server.getLog().get(server.getCurrentLogIndex()).getTerm();
         }
-        AppendEntry rv = new AppendEntry(server.getCurrentTerm(), server.getServerID(), lastLogIndex, lastLogTerm, null, 0, true, null, "REQUESTVOTE");
+        AppendEntry rv = new AppendEntry(server.getCurrentTerm(), server.getServerID(), lastLogIndex, lastLogTerm, null, 0, false, null, "REQUESTVOTE");
         return rv;
     }
 

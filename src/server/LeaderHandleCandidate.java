@@ -40,7 +40,9 @@ public class LeaderHandleCandidate implements Runnable {
                     processAppendEntry(ae, leaderHandleCandidateSocket);//executa o método que processa a AppendEntry de outro servidor
                     System.out.println("Recebida AppendEntry. Sou o " + server.getServerID());
                 } else {
-                    leaderHandleCandidateSocket.close();
+                    if (leaderHandleCandidateSocket != null) {
+                        leaderHandleCandidateSocket.close();
+                    }
                 }
             }
 //            serverSocket.close();
@@ -65,5 +67,10 @@ public class LeaderHandleCandidate implements Runnable {
 
     public void stopLeaderHandleCandidate() {
         this.stopLeaderHandleCandidate = true;
+        try {
+            new Socket(serverSocket.getInetAddress(), serverSocket.getLocalPort()).close();
+        } catch (IOException e) {
+
+        }
     }
 }

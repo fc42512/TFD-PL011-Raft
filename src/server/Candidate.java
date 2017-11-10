@@ -30,6 +30,9 @@ public class Candidate implements Runnable {
 
     @Override
     public void run() {
+        server.setThreadCandidate(this);
+        server.resetThreadLeader();
+        server.resetThreadFollower();
         try {
             while (!stopCandidate) {
 
@@ -49,7 +52,7 @@ public class Candidate implements Runnable {
                 new Thread(new Follower(server, serverSocket)).start();
                 
             } else if(Objects.equals(server.getState(), "LEADER")){
-                new Thread(new Leader(server, server.getNextIndex(), server.getNextIndex())).start();
+                new Thread(new Leader(server, serverSocket, server.getNextIndex(), server.getNextIndex())).start();
             }
             
             

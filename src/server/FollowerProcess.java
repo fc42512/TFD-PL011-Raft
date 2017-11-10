@@ -73,29 +73,14 @@ public class FollowerProcess implements Runnable {
             /* Verifica se o AppendEntry é do tipo HeartBeat */
             if (Objects.equals(ae.getType(), "HEARTBEAT")) {
                 System.out.println("Recebi heartbeat :)");
-//                electionTimeOut.cancelElectionTimer();
-//                electionTimeOut.run();
+                this.server.resetVotedFor();
                 return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, server.getLastApplied(), false, null, "HEARTBEAT");
 
                 /* Verifica se o AppendEntry é do tipo RequestVote */
             } else if (Objects.equals(ae.getType(), "REQUESTVOTE")) {
-                AppendEntry rv = null;
-                if(server.getLog().get(server.getCurrentLogIndex()).getTerm() > ae.getPrevLogTerm()){
-                    rv = new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, false, null, "REQUESTVOTE");
-                } else if (server.getLog().get(server.getCurrentLogIndex()).getTerm() == ae.getPrevLogTerm()) {
-                    if(server.getCurrentLogIndex() >= ae.getPrevLogIndex()){
-                        rv = new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, false, null, "REQUESTVOTE");
-                    }
-                    else {
-                        rv = new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, true, null, "REQUESTVOTE");
-                    }
-                } else {
-                    rv = new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, true, null, "REQUESTVOTE");
-                }
-                electionTimeOut.cancelElectionTimer();
+                AppendEntry rv = server.receiverRequestVoteValidation(ae);//executa a validação de quem recebe um requestVote
                 stopFollowerProcess();                
                 return rv;
-                
                                 
                 /* Verifica se o AppendEntry é do tipo AppendEntry */
             } else if (Objects.equals(ae.getType(), "APPENDENTRY")) {

@@ -23,19 +23,22 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class Server implements Runnable {
 
     private String serverID;
-    private boolean runServer;
+    private boolean stopServer;
     private String leaderID;
     private PropertiesManager serversProps;
     private PropertiesManager clientsProps;
+    private ServerSocket socketForClients;
     private int ID_MESSAGE = 0;
     private String state;
+    private Leader threadLeader;
+    private Candidate threadCandidate;
+    private Follower threadFollower;
 
     private int currentTerm;
     private String votedFor; //candidateId que recebeu o voto no termo atual (null se não há)
     private ArrayList<LogEntry> log;
     private int commitIndex;//indice do último log entry commitado
     private int lastApplied;//indice do último log entry executado pela máquina de estados
-
 
     private LinkedBlockingQueue<Message> clientQueue;
     private LinkedBlockingQueue<AppendEntry> serverQueue;
@@ -45,10 +48,13 @@ public class Server implements Runnable {
 
     public Server(String id, PropertiesManager serversProps, PropertiesManager clientsProps) {
         this.serverID = id;
-        this.runServer = true;
+        this.stopServer = false;
         this.leaderID = "srv0";
         this.serversProps = serversProps;
         this.clientsProps = clientsProps;
+        this.threadLeader = null;
+        this.threadCandidate = null;
+        this.threadFollower = null;
         System.out.println("O servidor " + serverID + " arrancou!");
 
         this.currentTerm = 0;
@@ -69,29 +75,33 @@ public class Server implements Runnable {
 
         /* Criar Socket para escutar os clientes */
         try {
-            ServerSocket socketForClients = new ServerSocket(Integer.parseInt(clientsProps.getServerAdress(serverID)[1]));
+            socketForClients = new ServerSocket(Integer.parseInt(clientsProps.getServerAdress(serverID)[1]));
             socketForClients.setReuseAddress(true);
 
             /* Criar Socket para escutar os servidores */
             ServerSocket socketForServers = new ServerSocket(Integer.parseInt(serversProps.getServerAdress(serverID)[1]));
             socketForServers.setReuseAddress(true);
 
-            /*Set State to Server */
-            if (Integer.parseInt(serverID.substring(3)) == 0) {
-                state = "LEADER";
-                System.out.println("Verifica se é líder...");
-                new Thread(new Leader(this, getNextIndex(), getNextIndex())).start();
-
-            } else {
+//            /*Set State to Server */
+//            if (Integer.parseInt(serverID.substring(3)) == 0) {
+//                state = "LEADER";
+//                System.out.println("Verifica se é líder...");
+//                new Thread(new Leader(this, socketForServers, getNextIndex(), getNextIndex())).start();
+//
+//            } else {
                 state = "FOLLOWER";
                 new Thread(new Follower(this, socketForServers)).start();
-            }
+//            }
 
-            while (this.runServer) {
+            while (!stopServer) {
                 /* Processar os pedidos dos clientes */
-                new Thread(new ProcessClient(this, socketForClients.accept())).start();
-//                /* Processar os pedidos dos servidores */
-//                new Thread(new ProcessClient(this, socketForServers.accept())).start();
+                Socket clientSocket = socketForClients.accept();
+                if (!stopServer) {
+                    new Thread(new ProcessClient(this, clientSocket)).start();
+                } else {
+                    clientSocket.close();
+                }
+
             }
         } catch (IOException ex) {
             System.err.println("O servidor " + serverID + " não consegue ativar a sua ligação \n" + ex.getLocalizedMessage());
@@ -126,7 +136,7 @@ public class Server implements Runnable {
     public void setState(String state) {
         this.state = state;
     }
-    
+
     public PropertiesManager getServersProps() {
         return serversProps;
     }
@@ -146,11 +156,11 @@ public class Server implements Runnable {
     public void setVotedFor(String votedFor) {
         this.votedFor = votedFor;
     }
-    
+
     public void resetVotedFor() {
         this.votedFor = null;
     }
-    
+
     public int getCommitIndex() {
         return commitIndex;
     }
@@ -186,17 +196,53 @@ public class Server implements Runnable {
     public Socket getCandidateSocket(String id) {
         return candidateSockets.get(id);
     }
+
+    public void setThreadLeader(Leader threadLeader) {
+        this.threadLeader = threadLeader;
+    }
+
+    public void setThreadCandidate(Candidate threadCandidate) {
+        this.threadCandidate = threadCandidate;
+    }
+
+    public void setThreadFollower(Follower threadFollower) {
+        this.threadFollower = threadFollower;
+    }
     
+    public void resetThreadLeader() {
+        this.threadLeader = null;
+    }
+
+    public void resetThreadCandidate() {
+        this.threadCandidate = null;
+    }
+
+    public void resetThreadFollower() {
+        this.threadFollower = null;
+    }
 
     /**
      * *******************************************************************
      ********************* MÉTODOS SERVIDOR ******************************
      * *******************************************************************
      */
-    
-    public void stopServer(){
-        runServer = false;
+    public void stopServer() {
+        this.stopServer = true;
+        if(this.threadLeader != null){
+            this.threadLeader.stopLeader();
+        }else if(this.threadCandidate != null){
+            this.threadCandidate.stopCandidate();
+        }else if(this.threadFollower != null){
+            this.threadFollower.stopFollower();
+        }
+        
+        try {
+            new Socket(socketForClients.getInetAddress(), socketForClients.getLocalPort()).close();
+        } catch (IOException e) {
+            
+        }
     }
+
     public void incrementCurrentTerm() {
         currentTerm++;
     }
@@ -208,7 +254,7 @@ public class Server implements Runnable {
     public void addProcessClientSockets(int id, ProcessClient processClient) {
         clientSockets.put(id, processClient);
     }
-    
+
     public void addCandidateSockets(String id, Socket candidateSocket) {
         candidateSockets.put(id, candidateSocket);
     }
@@ -265,11 +311,41 @@ public class Server implements Runnable {
         lastApplied = commitIndex;
 
     }
-    
+
+    public AppendEntry receiverRequestVoteValidation(AppendEntry ae) {
+        AppendEntry rv = null;
+        int lastLogIndex, lastLogTerm;
+        if (getCurrentLogIndex() == -1) {
+            lastLogIndex = -1;
+            lastLogTerm = 0;
+        } else {
+            lastLogIndex = getCurrentLogIndex();
+            lastLogTerm = getLog().get(getCurrentLogIndex()).getTerm();
+        }
+        if (ae.getTerm() < getCurrentTerm()) {
+            rv = new AppendEntry(getCurrentTerm(), getServerID(), 0, 0, null, 0, false, null, "REQUESTVOTE");
+        } else if (getVotedFor() == null || Objects.equals(getVotedFor(), ae.getLeaderId())) {
+            if (lastLogTerm > ae.getPrevLogTerm()) {
+                rv = new AppendEntry(getCurrentTerm(), getServerID(), 0, 0, null, 0, false, null, "REQUESTVOTE");
+            } else if (lastLogTerm == ae.getPrevLogTerm()) {
+                if (lastLogIndex > ae.getPrevLogIndex()) {
+                    rv = new AppendEntry(getCurrentTerm(), getServerID(), 0, 0, null, 0, false, null, "REQUESTVOTE");
+                } else {
+                    rv = new AppendEntry(getCurrentTerm(), getServerID(), 0, 0, null, 0, true, null, "REQUESTVOTE");
+                    setVotedFor(ae.getLeaderId());
+                }
+            } else {
+                rv = new AppendEntry(getCurrentTerm(), getServerID(), 0, 0, null, 0, true, null, "REQUESTVOTE");
+                setVotedFor(ae.getLeaderId());
+            }
+        }
+        return rv;
+    }
+
     public String printLog() {
         String str = serverID + "->LOG: ";
-        for(LogEntry l : log){
-            str += l.getTerm() + "-" + l.getIndex() + "-" + l.getIdMessage() +"/";
+        for (LogEntry l : log) {
+            str += l.getTerm() + "-" + l.getIndex() + "-" + l.getIdMessage() + "/";
         }
         return str;
     }
