@@ -10,8 +10,6 @@ import common.Message;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *

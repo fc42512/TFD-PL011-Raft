@@ -49,17 +49,18 @@ public class RequestVote implements Runnable {
                 if (response != null && !isFinished) {
                     server.getServerQueue().add(response);
                     System.out.println("Enviado para o candidato de novo...");
+                    isFinished = true;
                 }
 
                 oos.close();
                 ois.close();
                 socket.close();
-                isFinished = true;
+                
 
             } catch (IOException ex) {
                 System.err.println("O servidor contactado pelo " + server.getState() + " " + server.getServerID() + " não está disponível! \n" + ex.getLocalizedMessage());
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(0);
                 } catch (InterruptedException ex1) {
                     System.err.println("O servidor contactado pelo " + server.getState() + " " + server.getServerID() + " não está disponível! Estou à espera!!!\n" + ex1.getLocalizedMessage());
                 }

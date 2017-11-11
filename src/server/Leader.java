@@ -9,7 +9,6 @@ import common.Message;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,21 +22,16 @@ import java.util.Objects;
 public class Leader implements Runnable {
 
     private Server server;
-    private ServerSocket serverSocket;
     private Map<String, Integer> nextIndex;//indice do próximo log entry a enviar para cada servidor
     private Map<String, Integer> matchIndex;//indice do último log entry replicado em cada servidor
-    private ThreadGroup talkToFollowers;
     private Map<String, TalkToFollower> followers;
     private boolean stopLeader;
-    private LeaderHandleCandidate leaderHandlerClient;
     private HeartBeat heartbeat;
 
-    public Leader(Server s, ServerSocket serverSocket, Map<String, Integer> nextIndex, Map<String, Integer> matchIndex) {
+    public Leader(Server s, Map<String, Integer> nextIndex, Map<String, Integer> matchIndex) {
         this.server = s;
-        this.serverSocket = serverSocket;
         this.nextIndex = nextIndex;
         this.matchIndex = matchIndex;
-        this.talkToFollowers = new ThreadGroup("followers");
         this.followers = new HashMap<>();
         this.stopLeader = false;
     }
@@ -48,8 +42,7 @@ public class Leader implements Runnable {
         server.setThreadLeader(this);
         server.resetThreadFollower();
         server.resetThreadCandidate();
-        leaderHandlerClient = new LeaderHandleCandidate(server, serverSocket);
-        new Thread(leaderHandlerClient).start();
+        server.getServerQueue().clear();//limpa a fila de AppendEntry recebidas
         createTalkToFollowers();
         heartbeat = new HeartBeat(this);
         new Thread(heartbeat).start();//arranca com a thread responsável por preparar os heartbeats para serem enviados
@@ -99,7 +92,7 @@ public class Leader implements Runnable {
 
                     if (rv.isSuccess()) {
                         stopLeader();//paro o líder, pois ele votou favorávelmente a um candidato
-                        new Thread(new Follower(server, serverSocket)).start();//inicia-se como follower
+                        new Thread(new Follower(server)).start();//inicia-se como follower
                     } else {
 
 //                    if(ae.getTerm() < server.getCurrentTerm()){
@@ -117,7 +110,7 @@ public class Leader implements Runnable {
 //                        }
 //                    }
                         try {
-                            sendRequestVoteToCandidate(rv, server.getCandidateSocket(ae.getLeaderId()));
+                            sendRequestVoteToCandidate(rv, server.getServersSockets(ae.getLeaderId()));
                         } catch (IOException ex) {
                             System.out.println("Falha no reenvio do requestVote pelo lider" + server.getServerID());
                         }
@@ -153,6 +146,7 @@ public class Leader implements Runnable {
     private void createTalkToFollowers() {
         String serverToTalk;
         TalkToFollower ttf;
+        ThreadGroup talkToFollowers = new ThreadGroup("talkToFollowers");
         for (int i = 0; i < server.getServersProps().getHashMapProperties().size(); i++) {
             serverToTalk = "srv" + i;
             if (!server.getServerID().equals(serverToTalk)) {
@@ -222,8 +216,10 @@ public class Leader implements Runnable {
 
     public void stopLeader() {
         this.stopLeader = true;
-        leaderHandlerClient.stopLeaderHandleCandidate();
         heartbeat.stopHeartBeat();
+        if (server.getProcessServer() != null) {
+            server.getProcessServer().stopProcessServer();
+        }
         stopAllTalkToFollowers();
     }
 }

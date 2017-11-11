@@ -5,11 +5,11 @@
  */
 package server;
 
-
+import java.io.BufferedOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.net.ServerSocket;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Objects;
 
 /**
@@ -19,61 +19,158 @@ import java.util.Objects;
 public class Candidate implements Runnable {
 
     private Server server;
-    private ServerSocket serverSocket;
+    private int voteCounter;
     private boolean stopCandidate;
+    private boolean restartCandidate;
+    private boolean startLeaderOrFollower;
+    private ElectionTimeOutCandidate electionTimeOut;
+    private ArrayList<RequestVote> talkToOtherServers;
 
-    public Candidate(Server server, ServerSocket serverSocket) {
+    public Candidate(Server server) {
         this.server = server;
-        this.serverSocket = serverSocket;
+        this.voteCounter = 1;//vota nele próprio
+        this.server.setVotedFor(this.server.getServerID());
         this.stopCandidate = false;
+        this.restartCandidate = false;
+        this.startLeaderOrFollower = false;
+        this.electionTimeOut = new ElectionTimeOutCandidate(server, this);
+        this.talkToOtherServers = new ArrayList<>();
     }
 
     @Override
     public void run() {
+        System.out.println("O " + server.getServerID() + " estabeleceu-se como candidato...");
         server.setThreadCandidate(this);
         server.resetThreadLeader();
         server.resetThreadFollower();
-        try {
-            while (!stopCandidate) {
+        int numServers = server.getServersProps().getHashMapProperties().size() / 2;
+        server.getServerQueue().clear();//limpa a fila de AppendEntry recebidas
+        createTalkToOtherServers(createRequestVote());
+        electionTimeOut.cancelElectionTimer();
+        electionTimeOut.run();
 
-                Socket candidateSocket = serverSocket.accept();
-
+        boolean finishedElection = false;
+        while (!finishedElection && !stopCandidate) {
+            if (!server.getServerQueue().isEmpty() && !finishedElection && !stopCandidate) {
                 if (!stopCandidate) {
-                    ObjectInputStream dis = new ObjectInputStream(candidateSocket.getInputStream());
-                    AppendEntry ae = (AppendEntry) dis.readObject();
-                    processAppendEntry(ae, candidateSocket);//executa o método que processa a AppendEntry de outro servidor
-                    System.out.println("Recebida AppendEntry. Sou o " + server.getServerID());
-                } else {
-                    candidateSocket.close();
+                    AppendEntry ae = server.getServerQueue().remove();
+                    if (Objects.equals(ae.getType(), "REQUESTVOTE")) {
+                        //Se votar a favor
+                        if (ae.isSuccess()) {
+                            voteCounter++;
+                            removeTalkToOtherServers(ae.getLeaderId());
+                        }
+
+                    } else if (Objects.equals(ae.getType(), "HEARTBEAT") || Objects.equals(ae.getType(), "APPENDENTRY") || Objects.equals(ae.getType(), "REQUESTVOTE")) {
+                        if (ae.getTerm() > server.getCurrentTerm()) {
+                            electionTimeOut.cancelElectionTimer();
+                            server.setState("FOLLOWER");// Candidate volta ao estado de Follower
+                            stopCandidate();
+                            this.startLeaderOrFollower = true;
+                            AppendEntry hr = new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, server.getLastApplied(), false, null, "HEARTBEAT");
+                            try {
+                                sendAppendEntryToServer(hr, server.getServersSockets(ae.getLeaderId()));
+                            } catch (IOException ex) {
+                                System.err.println(server.getServerID() + " - Erro no estabelecimento da ligação com o servidor \n" + ex.getLocalizedMessage());
+                            }
+                        }
+                    }
+                }
+                finishedElection = voteCounter > numServers;
+                if (finishedElection) {
+                    server.setState("LEADER");
+                    this.startLeaderOrFollower = true;
                 }
             }
-//            serverSocket.close();
-            if(Objects.equals(server.getState(), "FOLLOWER")){
-                new Thread(new Follower(server, serverSocket)).start();
-                
-            } else if(Objects.equals(server.getState(), "LEADER")){
-                new Thread(new Leader(server, serverSocket, server.getNextIndex(), server.getNextIndex())).start();
+
+        }
+        electionTimeOut.cancelElectionTimer();
+        shutdownTalkToOtherServers();
+        server.resetVotedFor();
+        if (startLeaderOrFollower) {
+            startLeaderOrFollower();
+        }
+        if (restartCandidate){
+            new Thread(new Candidate(server)).start();
+        }
+    }
+
+    private void createTalkToOtherServers(AppendEntry ae) {
+        String serverToTalk;
+        for (int i = 0; i < server.getServersProps().getHashMapProperties().size(); i++) {
+            serverToTalk = "srv" + i;
+            if (!server.getServerID().equals(serverToTalk)) {
+                RequestVote rv = new RequestVote(server, Integer.parseInt(server.getServersProps().getServerAdress(serverToTalk)[1]), ae, serverToTalk);
+                talkToOtherServers.add(rv);
+                new Thread(rv).start();
             }
-            
-            
-
-        } catch (IOException ex) {
-            System.err.println(server.getServerID() + " - Erro no estabelecimento da ligação com o líder \n" + ex.getLocalizedMessage());
-
-        } catch (ClassNotFoundException ex) {
-            System.err.println("Erro na conversão da classe Request\n" + ex.getLocalizedMessage());
-        }
-
-    }
-
-    private void processAppendEntry(AppendEntry ae, Socket candidateSocket) {
-        if (ae != null) {
-            server.addCandidateSockets(ae.getLeaderId(), candidateSocket);
-            server.getServerQueue().add(ae);
         }
     }
 
-    public void stopCandidate() {
+    private void removeTalkToOtherServers(String id) {
+        if (!talkToOtherServers.isEmpty()) {
+            for (int i = 0; i < talkToOtherServers.size(); i++) {
+                if (Objects.equals(talkToOtherServers.get(i).getId(), id)) {
+                    talkToOtherServers.remove(i);
+                    break;
+                }
+            }
+        }
+    }
+
+    private AppendEntry createRequestVote() {
+        int lastLogIndex, lastLogTerm;
+        server.incrementCurrentTerm();
+        if (server.getCurrentLogIndex() == -1) {
+            lastLogIndex = -1;
+            lastLogTerm = 0;
+        } else {
+            lastLogIndex = server.getCurrentLogIndex();
+            lastLogTerm = server.getLog().get(server.getCurrentLogIndex()).getTerm();
+        }
+        AppendEntry rv = new AppendEntry(server.getCurrentTerm(), server.getServerID(), lastLogIndex, lastLogTerm, null, 0, false, null, "REQUESTVOTE");
+        return rv;
+    }
+
+    private void sendAppendEntryToServer(AppendEntry ae, Socket s) throws IOException {
+        BufferedOutputStream bos = new BufferedOutputStream(s.getOutputStream());
+        ObjectOutputStream osw = new ObjectOutputStream(bos);
+        osw.writeObject(ae);//Envia o appendentry
+        osw.flush();
+        osw.close();
+        bos.close();
+        s.close();//Fecha a ligação
+    }
+
+    public void shutdownTalkToOtherServers() {
+        for (RequestVote rv : getTalkToOtherServers()) {
+            rv.cancelRequestVote();
+        }
+    }
+    
+    public void stopCandidate(){
         this.stopCandidate = true;
+        if (server.getProcessServer() != null) {
+            server.getProcessServer().stopProcessServer();
+        }
     }
+
+    public void restartCandidate() {
+        stopCandidate();
+        this.restartCandidate = true;
+    }
+
+    public ArrayList<RequestVote> getTalkToOtherServers() {
+        return talkToOtherServers;
+    }
+
+    private void startLeaderOrFollower() {
+        if (Objects.equals(server.getState(), "FOLLOWER")) {
+            new Thread(new Follower(server)).start();
+
+        } else if (Objects.equals(server.getState(), "LEADER")) {
+            new Thread(new Leader(server, server.getNextIndex(), server.getNextIndex())).start();
+        }
+    }
+
 }

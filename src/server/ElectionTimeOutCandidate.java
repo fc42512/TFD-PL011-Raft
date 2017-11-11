@@ -16,13 +16,13 @@ import java.util.TimerTask;
 public class ElectionTimeOutCandidate {
 
     private Server server;
-    private CandidateProcess candidateProcess;
+    private Candidate candidate;
     private Timer electionTimer;
     private TimerTask electionTimerTask;
 
-    public ElectionTimeOutCandidate(Server server, CandidateProcess candidateProcess) {
+    public ElectionTimeOutCandidate(Server server, Candidate candidate) {
         this.server = server;
-        this.candidateProcess = candidateProcess;
+        this.candidate = candidate;
     }
 
     public void run() {
@@ -33,11 +33,9 @@ public class ElectionTimeOutCandidate {
             public void run() {
 
                 System.out.println("Candidate " + server.getServerID() + " - Atingi o timeout!");
-                server.setState("CANDIDATE");// CandidateProcess mantém-se no estado de Candidato
-                candidateProcess.restartCandidateProcess();
-                candidateProcess.shutdownTalkToOtherServers();
+                server.setState("CANDIDATE");// Candidate mantém-se no estado de Candidato
+                candidate.restartCandidate();
                 cancelElectionTimer();
-                new Thread(new CandidateProcess(server, candidateProcess.getCandidate())).start();
             }
 
         };
@@ -60,7 +58,7 @@ public class ElectionTimeOutCandidate {
     /* Gera um número aleatório entre 150 e 299 */
     private int getRandomTime() {
         Random rnd = new Random();
-        return rnd.nextInt(150) + 150;
+        return rnd.nextInt(150) + 20000;
     }
 
 }

@@ -30,6 +30,8 @@ public class Server implements Runnable {
     private ServerSocket socketForClients;
     private int ID_MESSAGE = 0;
     private String state;
+    private ListenOtherServers listenOtherServers;
+    private ProcessServer processServer;
     private Leader threadLeader;
     private Candidate threadCandidate;
     private Follower threadFollower;
@@ -44,7 +46,7 @@ public class Server implements Runnable {
     private LinkedBlockingQueue<AppendEntry> serverQueue;
     private HashMap<String, Message> stateMachine;
     private HashMap<Integer, ProcessClient> clientSockets;
-    private HashMap<String, Socket> candidateSockets;
+    private HashMap<String, Socket> serversSockets;
 
     public Server(String id, PropertiesManager serversProps, PropertiesManager clientsProps) {
         this.serverID = id;
@@ -67,7 +69,7 @@ public class Server implements Runnable {
         serverQueue = new LinkedBlockingQueue<>();
         stateMachine = new HashMap<>();
         clientSockets = new HashMap<>();
-        candidateSockets = new HashMap<>();
+        serversSockets = new HashMap<>();
     }
 
     @Override
@@ -82,16 +84,11 @@ public class Server implements Runnable {
             ServerSocket socketForServers = new ServerSocket(Integer.parseInt(serversProps.getServerAdress(serverID)[1]));
             socketForServers.setReuseAddress(true);
 
-//            /*Set State to Server */
-//            if (Integer.parseInt(serverID.substring(3)) == 0) {
-//                state = "LEADER";
-//                System.out.println("Verifica se é líder...");
-//                new Thread(new Leader(this, socketForServers, getNextIndex(), getNextIndex())).start();
-//
-//            } else {
-                state = "FOLLOWER";
-                new Thread(new Follower(this, socketForServers)).start();
-//            }
+            listenOtherServers = new ListenOtherServers(this, socketForServers);
+            new Thread(listenOtherServers).start();
+
+            state = "FOLLOWER";
+            new Thread(new Follower(this)).start();
 
             while (!stopServer) {
                 /* Processar os pedidos dos clientes */
@@ -193,8 +190,12 @@ public class Server implements Runnable {
         return clientSockets.get(id);
     }
 
-    public Socket getCandidateSocket(String id) {
-        return candidateSockets.get(id);
+    public Socket getServersSockets(String id) {
+        return serversSockets.get(id);
+    }
+
+    public HashMap<String, Socket> getHashMapServersSockets() {
+        return this.serversSockets;
     }
 
     public void setThreadLeader(Leader threadLeader) {
@@ -208,7 +209,7 @@ public class Server implements Runnable {
     public void setThreadFollower(Follower threadFollower) {
         this.threadFollower = threadFollower;
     }
-    
+
     public void resetThreadLeader() {
         this.threadLeader = null;
     }
@@ -221,6 +222,14 @@ public class Server implements Runnable {
         this.threadFollower = null;
     }
 
+    public void setProcessServer(ProcessServer processServer) {
+        this.processServer = processServer;
+    }
+
+    public ProcessServer getProcessServer() {
+        return processServer;
+    }
+
     /**
      * *******************************************************************
      ********************* MÉTODOS SERVIDOR ******************************
@@ -228,18 +237,20 @@ public class Server implements Runnable {
      */
     public void stopServer() {
         this.stopServer = true;
-        if(this.threadLeader != null){
+        this.listenOtherServers.stopListenOtherServers();
+
+        if (this.threadLeader != null) {
             this.threadLeader.stopLeader();
-        }else if(this.threadCandidate != null){
+        } else if (this.threadCandidate != null) {
             this.threadCandidate.stopCandidate();
-        }else if(this.threadFollower != null){
+        } else if (this.threadFollower != null) {
             this.threadFollower.stopFollower();
         }
-        
+
         try {
             new Socket(socketForClients.getInetAddress(), socketForClients.getLocalPort()).close();
         } catch (IOException e) {
-            
+
         }
     }
 
@@ -255,8 +266,8 @@ public class Server implements Runnable {
         clientSockets.put(id, processClient);
     }
 
-    public void addCandidateSockets(String id, Socket candidateSocket) {
-        candidateSockets.put(id, candidateSocket);
+    public void addServersSockets(String id, Socket serverSocket) {
+        serversSockets.put(id, serverSocket);
     }
 
     public void appendLogEntry(LogEntry logEntry) {

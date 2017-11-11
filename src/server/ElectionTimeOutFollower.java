@@ -17,14 +17,12 @@ public class ElectionTimeOutFollower {
 
     private Server server;
     private Follower follower;
-    private FollowerProcess followerProcess;
     private Timer electionTimer;
     private TimerTask electionTimerTask;
 
-    public ElectionTimeOutFollower(Server server, Follower follower, FollowerProcess followerProcess) {
+    public ElectionTimeOutFollower(Server server, Follower follower) {
         this.server = server;
         this.follower = follower;
-        this.followerProcess = followerProcess;
     }
 
     public void run() {
@@ -36,7 +34,7 @@ public class ElectionTimeOutFollower {
                 
                 System.out.println("Follower " + server.getServerID()+ " - Atingi o timeout!");
                 follower.stopFollower();
-                followerProcess.stopFollowerProcess();
+                follower.activateStartCandidate();
                 server.setState("CANDIDATE");// Follower passa para o estado de Candidato
                 cancelElectionTimer();
             }
@@ -61,7 +59,7 @@ public class ElectionTimeOutFollower {
     /* Gera um número aleatório entre 150 e 299 */
     private int getRandomTime() {
         Random rnd = new Random();
-        return rnd.nextInt(150)+150;
+        return rnd.nextInt(150)+15000;
     }
 
 }
