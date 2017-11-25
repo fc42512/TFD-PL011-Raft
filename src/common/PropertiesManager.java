@@ -14,6 +14,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 
+/**
+ *
+ * @author TFD-GRUPO11-17/18
+ */
+
 public class PropertiesManager {
 
     private static final String CLIENT_TO_SERVER_PROPERTIES = "client_config.properties";

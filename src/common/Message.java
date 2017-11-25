@@ -9,19 +9,23 @@ import java.io.Serializable;
 
 /**
  *
- * @author João
+ * @author TFD-GRUPO11-17/18
  */
 public class Message implements Serializable {
 
     private String id;
     private int source;
     private String messageType;
+    private OperationType operationType;
+    private String key;
     private String content;
 
-    public Message(String id, int source, String messageType, String content) {
+    public Message(String id, int source, String messageType, OperationType operationType, String key, String content) {
         this.id = id;
         this.source = source;
         this.messageType = messageType;
+        this.operationType = operationType;
+        this.key = key;
         this.content = content;
     }
 
@@ -49,8 +53,24 @@ public class Message implements Serializable {
         this.messageType = messageType;
     }
 
+    public OperationType getOperationType() {
+        return operationType;
+    }
+
+    public void setOperationType(OperationType operationType) {
+        this.operationType = operationType;
+    }
+    
     public String getContent() {
         return content;
+    }
+
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
     }
 
     public void setContent(String content) {

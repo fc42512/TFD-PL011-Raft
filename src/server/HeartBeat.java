@@ -7,7 +7,7 @@ package server;
 
 /**
  *
- * @author João
+ * @author TFD-GRUPO11-17/18
  */
 public class HeartBeat implements Runnable {
 
@@ -27,7 +27,7 @@ public class HeartBeat implements Runnable {
                 leader.sendAppendEntries(ae);
                 System.out.println("Enviados os heartbeats para todos os followers...");
                 
-                Thread.sleep(10000);
+                Thread.sleep(100);
             }
         } catch (InterruptedException ex) {
             System.out.println("Erro no envio dos heartbeats!");

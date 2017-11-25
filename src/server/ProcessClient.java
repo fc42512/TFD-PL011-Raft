@@ -15,7 +15,7 @@ import java.util.Objects;
 
 /**
  *
- * @author João
+ * @author TFD-GRUPO11-17/18
  */
 public class ProcessClient implements Runnable {
 
@@ -81,7 +81,7 @@ public class ProcessClient implements Runnable {
                 server.appendMessageClientQueue(request);
 
             } else {
-                response = new Message(request.getId(), request.getSource(), "REJECT", server.getLeaderID());
+                response = new Message(request.getId(), request.getSource(), "REJECT", request.getOperationType(), request.getKey(), server.getLeaderID());
                 finishedConnection = true;
             }
         }

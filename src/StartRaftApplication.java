@@ -1,10 +1,10 @@
 
 import client.Client;
 import common.PropertiesManager;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
+import server.FileHandler;
 import server.Server;
 
 /*
@@ -30,7 +30,7 @@ public class StartRaftApplication {
         clientes = new HashMap<>();
         serversProps = new PropertiesManager("servidor");
         clientsProps = new PropertiesManager("cliente");
-
+        
         while (true) {
             System.out.println("Qual a operação que pretende executar?\n"
                     + "1 - Arrancar um servidor\n"

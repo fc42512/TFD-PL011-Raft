@@ -10,12 +10,10 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
- * @author João
+ * @author TFD-GRUPO11-17/18
  */
 public class TalkToFollower implements Runnable {
 

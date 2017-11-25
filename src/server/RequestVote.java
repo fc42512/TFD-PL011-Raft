@@ -12,7 +12,7 @@ import java.net.Socket;
 
 /**
  *
- * @author João
+ * @author TFD-GRUPO11-17/18
  */
 public class RequestVote implements Runnable {
 

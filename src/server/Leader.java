@@ -17,7 +17,7 @@ import java.util.Objects;
 
 /**
  *
- * @author João
+ * @author TFD-GRUPO11-17/18
  */
 public class Leader implements Runnable {
 
@@ -67,7 +67,7 @@ public class Leader implements Runnable {
                 }
 
                 /* Líder adiciona uma nova entrada no seu log */
-                server.appendLogEntry(new LogEntry(server.getCurrentTerm(), server.getCurrentLogIndex() + 1, m.getMessageType(), m.getContent(), m.getId(), m.getSource()));
+                server.appendLogEntry(new LogEntry(server.getCurrentTerm(), server.getCurrentLogIndex() + 1, m.getOperationType(), m.getKey(), m.getContent(), m.getId(), m.getSource()));
                 System.out.println("Processar a resposta...");
 
                 /* Líder envia o AppendEntries RPC */
@@ -94,21 +94,6 @@ public class Leader implements Runnable {
                         stopLeader();//paro o líder, pois ele votou favorávelmente a um candidato
                         new Thread(new Follower(server)).start();//inicia-se como follower
                     } else {
-
-//                    if(ae.getTerm() < server.getCurrentTerm()){
-//                        rv = new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, false, null, "REQUESTVOTE");
-//                    }
-//                    else {
-//                        if(server.getVotedFor() == null || Objects.equals(server.getVotedFor(), ae.getLeaderId())){
-//                            if(ae.getPrevLogTerm() < server.getLog().get(server.getCurrentLogIndex()).getTerm()){
-//                                
-//                            }
-//                            
-//                            if(ae.getPrevLogIndex() >= server.getCurrentLogIndex()){
-//                                rv = new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, true, null, "REQUESTVOTE");
-//                            }
-//                        }
-//                    }
                         try {
                             sendRequestVoteToCandidate(rv, server.getServersSockets(ae.getLeaderId()));
                         } catch (IOException ex) {
@@ -118,7 +103,7 @@ public class Leader implements Runnable {
                 } else if (ae.isSuccess()) {
                     le = server.getLog().get(ae.getPrevLogIndex());
                     if (!le.isCommited() && (ae.getPrevLogIndex() >= server.getCommitIndex())) {
-                        le.incrementMajority();//incremeta para tantar fazer maioria numa dada log entry
+                        le.incrementMajority();//incrementa para tentar fazer maioria numa dada log entry
                         if (le.getMajority() > numFollowers) {
                             server.setCommitIndex(ae.getPrevLogIndex());//actualiza último indice comitado
                             System.out.println("Temos maioria...");
@@ -182,14 +167,6 @@ public class Leader implements Runnable {
                 AppendEntry ae = new AppendEntry(server.getCurrentTerm(), server.getServerID(), prevLogIndex, prevLogTerm, entries, server.getCommitIndex(), true, null, "APPENDENTRY");
                 followers.get(follower.getKey()).storeAppendEntryInQueue(ae);
             }
-//            while (matchIndex.get(follower.getKey()) < server.getCurrentLogIndex()) {
-////            System.out.println("Aguarda maioria..." + server.getServerQueue().size());
-//                if (!server.getServerQueue().isEmpty()) {
-//                    AppendEntry ae = server.getServerQueue().remove();
-//                    matchIndex.put(ae.getLeaderId(), ae.getLeaderCommit());//actualiza o ultimo indice commitado pelo follower
-//                    nextIndex.put(ae.getLeaderId(), ae.getLeaderCommit() + 1);//actualiza o proximo indice a enviar para o follower
-//                }
-//            }
         }
     }
 

@@ -6,13 +6,12 @@
 package server;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
  *
- * @author João
+ * @author TFD-GRUPO11-17/18
  */
 public class ListenOtherServers implements Runnable {
 

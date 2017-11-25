@@ -11,7 +11,7 @@ import java.util.ArrayList;
 
 /**
  *
- * @author João
+ * @author TFD-GRUPO11-17/18
  */
 public class AppendEntry implements Serializable {
     

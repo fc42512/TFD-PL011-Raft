@@ -5,6 +5,7 @@
  */
 package server;
 
+import common.KeyValueStore;
 import common.Message;
 import common.PropertiesManager;
 import java.io.IOException;
@@ -18,7 +19,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  *
- * @author João
+ * @author TFD-GRUPO11-17/18
  */
 public class Server implements Runnable {
 
@@ -35,6 +36,8 @@ public class Server implements Runnable {
     private Leader threadLeader;
     private Candidate threadCandidate;
     private Follower threadFollower;
+    private KeyValueStore keyValueStore;
+    private FileHandler fileHandler;
 
     private int currentTerm;
     private String votedFor; //candidateId que recebeu o voto no termo atual (null se não há)
@@ -57,6 +60,8 @@ public class Server implements Runnable {
         this.threadLeader = null;
         this.threadCandidate = null;
         this.threadFollower = null;
+        this.keyValueStore = new KeyValueStore();
+        this.fileHandler = new FileHandler();
         System.out.println("O servidor " + serverID + " arrancou!");
 
         this.currentTerm = 0;
@@ -290,8 +295,10 @@ public class Server implements Runnable {
     }
 
     public void execute(LogEntry logEntry) {
-        Message result = new Message(logEntry.getIdMessage(), logEntry.getSource(), "RESPONSE", logEntry.getParameter() + " Sucesso - atribuído o ID " + getIDMESSAGE());
-        stateMachine.put(logEntry.getIdMessage() + logEntry.getSource(), result);
+        fileHandler.writeToFile(storeLogEntryInFile(logEntry), false);//escreve nova LogEntry commited no ficheiro de log (persistent storage)
+        String executionResult = executeOperationOnKeyValueStore(logEntry);
+        Message m = new Message(logEntry.getIdMessage(), logEntry.getSource(), "RESPONSE", logEntry.getOperationType(), logEntry.getKey(), executionResult + "\nSucesso - atribuído o ID " + getIDMESSAGE());
+        stateMachine.put(logEntry.getIdMessage() + logEntry.getSource(), m);
         logEntry.setCommited(true);
         ID_MESSAGE++;
 
@@ -299,7 +306,7 @@ public class Server implements Runnable {
         if (logEntry.getSource() != 0) {
             if (Objects.equals(state, "LEADER")) {
                 try {
-                    getProcessClientSocket(logEntry.getSource()).sendMessageToClient(result);//responde ao cliente
+                    getProcessClientSocket(logEntry.getSource()).sendMessageToClient(m);//responde ao cliente
                     logEntry.setSentToClient(true);
                 } catch (IOException ex) {
                     System.err.println("Erro na resposta ao cliente pelo líder \n" + ex.getLocalizedMessage());
@@ -320,7 +327,44 @@ public class Server implements Runnable {
             execute(log.get(i));
         }
         lastApplied = commitIndex;
+    }
 
+    private String storeLogEntryInFile(LogEntry logEntry) {
+        String log = "" + logEntry.getTerm() + ";";
+        log += logEntry.getIndex() + ";";
+        log += logEntry.getOperationType() + ";";
+        log += logEntry.getKey() + ";";
+        log += logEntry.getValue() + ";";
+        log += logEntry.getIdMessage() + ";";
+        log += logEntry.getSource() + ";";
+        log += logEntry.getMajority() + ";";
+        log += logEntry.isCommited() + ";";
+        log += logEntry.isSentToClient() + ";";
+        return log;
+    }
+
+    private String executeOperationOnKeyValueStore(LogEntry logEntry) {
+        String result = "";
+        switch (logEntry.getOperationType()) {
+            case PUT:
+                keyValueStore.put(logEntry.getKey(), logEntry.getValue());
+                result = "Novo valor introduzido com sucesso para a chave " + logEntry.getKey();
+                break;
+            case GET:
+                result = keyValueStore.get(logEntry.getKey());
+                break;
+            case DEL:
+                result = keyValueStore.delete(logEntry.getKey());
+                break;
+            case LIST:
+                result = keyValueStore.list(logEntry.getKey(), logEntry.getValue());
+                break;
+            case CAS:
+                String [] stringSplit = logEntry.getValue().split("\\;");
+                result = keyValueStore.compareAndSwap(logEntry.getKey(), stringSplit[0], stringSplit[1]);
+                break;
+        }
+        return result;
     }
 
     public AppendEntry receiverRequestVoteValidation(AppendEntry ae) {

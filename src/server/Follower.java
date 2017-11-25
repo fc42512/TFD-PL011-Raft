@@ -14,7 +14,7 @@ import java.util.Objects;
 
 /**
  *
- * @author João
+ * @author TFD-GRUPO11-17/18
  */
 public class Follower implements Runnable {
 

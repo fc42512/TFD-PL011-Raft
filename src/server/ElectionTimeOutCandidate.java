@@ -11,7 +11,7 @@ import java.util.TimerTask;
 
 /**
  *
- * @author João
+ * @author TFD-GRUPO11-17/18
  */
 public class ElectionTimeOutCandidate {
 
@@ -55,10 +55,10 @@ public class ElectionTimeOutCandidate {
         }
     }
 
-    /* Gera um número aleatório entre 150 e 299 */
+    /* Gera um número aleatório entre 1500 e 1599 */
     private int getRandomTime() {
         Random rnd = new Random();
-        return rnd.nextInt(150) + 20000;
+        return rnd.nextInt(100) + 1500;
     }
 
 }

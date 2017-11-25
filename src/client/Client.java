@@ -10,10 +10,11 @@ import common.Message;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Random;
+import common.OperationType;
 
 /**
  *
- * @author João
+ * @author TFD-GRUPO11-17/18
  */
 public class Client implements Runnable {
 
@@ -86,7 +87,27 @@ public class Client implements Runnable {
         if (response != null) {
             ID_REQUEST++;
         }
-        request = new Message("CL" + id + "-RQ" + ID_REQUEST, id, "REQUEST", "CL" + id + "-RQ" + ID_REQUEST);
+        OperationType opType = OperationType.getRandomOperation();
+        String key = getRandomKey();
+        String value = "CL" + id + "-RQ" + ID_REQUEST;
+        switch (opType) {
+            case PUT:
+            case GET:
+            case DEL:
+                break;
+            case LIST:
+                key = "CL" + id + "-KEY1";
+                value = "CL" + id + "-KEY3";
+                break;
+            case CAS:
+                value = "CL" + id + "-RQ" + (ID_REQUEST-1) + ";" + "CL" + id + "-RQ" + ID_REQUEST;
+                break;
+        }
+        request = new Message("CL" + id + "-RQ" + ID_REQUEST, id, "REQUEST", opType, key, value);
+    }
+    private String getRandomKey(){
+        Random rnd = new Random();
+        return "CL" + id + "-KEY" + rnd.nextInt(3)+1;
     }
     
     public void setResponse(Message response) {
