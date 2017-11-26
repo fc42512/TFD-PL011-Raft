@@ -61,7 +61,7 @@ public class Server implements Runnable {
         this.threadCandidate = null;
         this.threadFollower = null;
         this.keyValueStore = new KeyValueStore();
-        this.fileHandler = new FileHandler();
+        this.fileHandler = new FileHandler(this);
         System.out.println("O servidor " + serverID + " arrancou!");
 
         this.currentTerm = 0;
@@ -295,11 +295,11 @@ public class Server implements Runnable {
     }
 
     public void execute(LogEntry logEntry) {
+        logEntry.setCommited(true);
         fileHandler.writeToFile(storeLogEntryInFile(logEntry), false);//escreve nova LogEntry commited no ficheiro de log (persistent storage)
         String executionResult = executeOperationOnKeyValueStore(logEntry);
         Message m = new Message(logEntry.getIdMessage(), logEntry.getSource(), "RESPONSE", logEntry.getOperationType(), logEntry.getKey(), executionResult + "\nSucesso - atribuído o ID " + getIDMESSAGE());
         stateMachine.put(logEntry.getIdMessage() + logEntry.getSource(), m);
-        logEntry.setCommited(true);
         ID_MESSAGE++;
 
         /* Servidor envia a resposta ao cliente, caso seja o líder*/
@@ -351,16 +351,16 @@ public class Server implements Runnable {
                 result = "Novo valor introduzido com sucesso para a chave " + logEntry.getKey();
                 break;
             case GET:
-                result = keyValueStore.get(logEntry.getKey());
+                result = keyValueStore.get(logEntry.getKey(), logEntry.getValue());
                 break;
             case DEL:
-                result = keyValueStore.delete(logEntry.getKey());
+                result = keyValueStore.delete(logEntry.getKey(), logEntry.getValue());
                 break;
             case LIST:
                 result = keyValueStore.list(logEntry.getKey(), logEntry.getValue());
                 break;
             case CAS:
-                String [] stringSplit = logEntry.getValue().split("\\;");
+                String [] stringSplit = logEntry.getValue().split("\\|");
                 result = keyValueStore.compareAndSwap(logEntry.getKey(), stringSplit[0], stringSplit[1]);
                 break;
         }
@@ -395,6 +395,23 @@ public class Server implements Runnable {
             }
         }
         return rv;
+    }
+    
+    public void takeSnapshot(){
+        String snapshot = "" + lastApplied + ";";
+        snapshot += getLastAppliedTerm() + "\n";
+        snapshot += keyValueStore.getStateMachineState();
+        fileHandler.writeToFile(snapshot, true);
+    }
+    
+    private int getLastAppliedTerm(){
+        int lastAppliedTerm = -1;
+        for(LogEntry l : log){
+            if(l.getIndex() == lastApplied){
+                return l.getTerm();
+            }
+        }
+        return lastAppliedTerm;
     }
 
     public String printLog() {

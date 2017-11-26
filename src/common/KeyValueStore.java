@@ -26,25 +26,28 @@ public class KeyValueStore {
         keyValueStore.put(key, value);
     }
 
-    public String get(String key) {
+    public String get(String key, String value) {
         StringBuilder response = new StringBuilder();
-        String value = keyValueStore.get(key);
-        if (value == null) {
+        String currentValue = keyValueStore.get(key);
+        if (currentValue == null) {
             response.append("Não existe valor associado a esta KEY!!");
         } else {
-            response.append("A key " + key + " tem o valor " + value);
+            response.append("A key " + key + " tem o valor " + currentValue);
         }
+        keyValueStore.put(key, value);
         return response.toString();
     }
 
-    public String delete(String key) {
+    public String delete(String key, String value) {
         StringBuilder response = new StringBuilder();
-        String value = keyValueStore.remove(key);
-        if (value == null) {
+        String currentValue = keyValueStore.get(key);
+        if (currentValue == null) {
             response.append("Não é possível apagar esta KEY, pois não existe!!");
         } else {
-            response.append("A key " + key + " com o valor " + value + " foi apagada");
+            
+            response.append("A key " + key + " com o valor " + currentValue + " foi apagada");
         }
+        keyValueStore.put(key, value);
         return response.toString();
     }
 
@@ -64,13 +67,17 @@ public class KeyValueStore {
         return response.toString();
     }
 
-    public String list(String fromKey, String toKey) {
+    public String list(String key, String value) {
         StringBuilder response = new StringBuilder("Chave---Valor\n");
-        SortedMap<String, String> list = keyValueStore.subMap(fromKey, toKey);
-        for (Map.Entry<String, String> keyValue : list.entrySet()) {
-            if (keyValue.getValue() != null) {
-                response.append("-> " + keyValue.getKey() + " - " + keyValue.getValue() + "\n");
-            }
+        keyValueStore.put(key, value);
+        response.append("-> " + key + " - " + keyValueStore.get(key) + "\n");
+        return response.toString();
+    }
+
+    public String getStateMachineState() {
+        StringBuilder response = new StringBuilder("STATE_MACHINE_STATE\n");
+        for (Map.Entry<String, String> keyValue : keyValueStore.entrySet()) {
+            response.append(keyValue.getKey() + ";" + keyValue.getValue() + "\n");
         }
         return response.toString();
     }

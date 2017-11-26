@@ -59,7 +59,7 @@ public class ElectionTimeOutFollower {
     /* Gera um número aleatório entre 150 e 299 */
     private int getRandomTime() {
         Random rnd = new Random();
-        return rnd.nextInt(150)+ 150;
+        return rnd.nextInt(150)+ 1500;
     }
 
 }

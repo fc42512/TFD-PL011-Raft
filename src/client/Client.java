@@ -88,27 +88,24 @@ public class Client implements Runnable {
             ID_REQUEST++;
         }
         OperationType opType = OperationType.getRandomOperation();
-        String key = getRandomKey();
+        String key = "CL" + id + "-KEY";
         String value = "CL" + id + "-RQ" + ID_REQUEST;
         switch (opType) {
             case PUT:
             case GET:
             case DEL:
-                break;
             case LIST:
-                key = "CL" + id + "-KEY1";
-                value = "CL" + id + "-KEY3";
                 break;
             case CAS:
-                value = "CL" + id + "-RQ" + (ID_REQUEST-1) + ";" + "CL" + id + "-RQ" + ID_REQUEST;
+                value = "CL" + id + "-RQ" + (ID_REQUEST-1) + "|" + "CL" + id + "-RQ" + ID_REQUEST;
                 break;
         }
         request = new Message("CL" + id + "-RQ" + ID_REQUEST, id, "REQUEST", opType, key, value);
     }
-    private String getRandomKey(){
-        Random rnd = new Random();
-        return "CL" + id + "-KEY" + rnd.nextInt(3)+1;
-    }
+//    private int getRandomKey(){
+//        Random rnd = new Random();
+//        return rnd.nextInt(3)+1;
+//    }
     
     public void setResponse(Message response) {
         this.response = response;

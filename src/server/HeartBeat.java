@@ -27,7 +27,7 @@ public class HeartBeat implements Runnable {
                 leader.sendAppendEntries(ae);
                 System.out.println("Enviados os heartbeats para todos os followers...");
                 
-                Thread.sleep(100);
+                Thread.sleep(1000);
             }
         } catch (InterruptedException ex) {
             System.out.println("Erro no envio dos heartbeats!");

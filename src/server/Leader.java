@@ -38,7 +38,7 @@ public class Leader implements Runnable {
 
     @Override
     public void run() {
-        System.out.println("Líder arrancou...");
+        System.out.println("Líder arrancou..." + server.getServerID());
         server.setThreadLeader(this);
         server.resetThreadFollower();
         server.resetThreadCandidate();
@@ -117,6 +117,11 @@ public class Leader implements Runnable {
 
                             /* Líder resolve as inconsistências dos followers */
                             resolveConflictingEntries();
+
+                            /* Realiza um snapshot da máquina de estados actual */
+                            if (server.getLog().size() > 5) {
+                                server.takeSnapshot();
+                            }
                         }
                     }
 

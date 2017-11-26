@@ -54,6 +54,7 @@ public class Follower implements Runnable {
                     }
                 }
             }
+            electionTimeOut.cancelElectionTimer();
             closeAllOpenSockets();
             if (startCandidate) {
                 startCandidate();
