@@ -351,13 +351,13 @@ public class Server implements Runnable {
                 result = "Novo valor introduzido com sucesso para a chave " + logEntry.getKey();
                 break;
             case GET:
-                result = keyValueStore.get(logEntry.getKey(), logEntry.getValue());
+                result = keyValueStore.get(logEntry.getKey());
                 break;
             case DEL:
-                result = keyValueStore.delete(logEntry.getKey(), logEntry.getValue());
+                result = keyValueStore.delete(logEntry.getKey());
                 break;
             case LIST:
-                result = keyValueStore.list(logEntry.getKey(), logEntry.getValue());
+                result = keyValueStore.list();
                 break;
             case CAS:
                 String [] stringSplit = logEntry.getValue().split("\\|");

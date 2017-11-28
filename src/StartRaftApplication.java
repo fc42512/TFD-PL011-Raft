@@ -48,14 +48,14 @@ public class StartRaftApplication {
                     System.out.println("Introduza o ID do servidor: ");
                     stopServer(sc.nextInt());
                     break;
-                case 3:
-                    System.out.println("Introduza o ID do cliente: ");
-                    startClient(sc.nextInt());
-                    break;
-                case 4:
-                    System.out.println("Introduza o ID do cliente: ");
-                    stopClient(sc.nextInt());
-                    break;
+//                case 3:
+//                    System.out.println("Introduza o ID do cliente: ");
+//                    startClient(sc.nextInt());
+//                    break;
+//                case 4:
+//                    System.out.println("Introduza o ID do cliente: ");
+//                    stopClient(sc.nextInt());
+//                    break;
                 case 5:
                     for (Map.Entry<String, Server> server : servidores.entrySet()) {
                         System.out.println(server.getValue().printLog() + "\n");
@@ -85,15 +85,15 @@ public class StartRaftApplication {
     }
 
     /* Iniciar Clientes */
-    public static void startClient(int id) {
-        Client c = new Client(id, clientsProps);
-        new Thread(c).start();
-        clientes.put(id, c);
-    }
+//    public static void startClient(int id) {
+//        Client c = new Client(id, clientsProps);
+//        new Thread(c).start();
+//        clientes.put(id, c);
+//    }
 
     /* Parar Cliente */
-    public static void stopClient(int id) {
-        clientes.get(id).stopClient();
-        System.out.println("O cliente " + id + " foi desligado!\n");
-    }
+//    public static void stopClient(int id) {
+//        clientes.get(id).stopClient();
+//        System.out.println("O cliente " + id + " foi desligado!\n");
+//    }
 }

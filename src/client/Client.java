@@ -16,16 +16,17 @@ import common.OperationType;
  *
  * @author TFD-GRUPO11-17/18
  */
-public class Client implements Runnable {
+public class Client {
 
-    private int id;
-    private PropertiesManager props;
+    private final int id;
+    private final PropertiesManager props;
     private Socket socket;
     private int ID_REQUEST;
+    private final ClientRequest clientRequest;
     private String leaderID;
     private Message request;
     private Message response;
-    private boolean stopClient;
+    private boolean connectionAlive;
 
     public Client(int id, PropertiesManager props) {
         this.id = id;
@@ -33,46 +34,46 @@ public class Client implements Runnable {
         this.ID_REQUEST = 0;
         this.leaderID = null;
         this.response = null;
-        this.stopClient = false;
-        
+        this.connectionAlive = false;
+        this.clientRequest = new ClientRequest(this);
+
         System.out.println("O cliente " + id + " arrancou!");
-        
 
     }
 
-    @Override
-    public void run() {
-        ClientRequest cr;
-        
-        int i = 0; 
-        while (i < 50 && !stopClient) {
-            
+    private void establishConnection() {
+        while (!connectionAlive) {
             try {
-                Thread.sleep(2500);
-            } catch (InterruptedException ex) {
-                System.err.println("Cliente foi interrompido!");
-            }
-            
-            cr = new ClientRequest(this);
-            setRequest();
-            while (!cr.isFinishedRequest() && !stopClient) {
-                try {
-                    if (leaderID == null) {
-                        leaderID = getRandomServer();
-                        socket = new Socket("localhost", getServerPort(leaderID));
-                    } else if (cr.isWrongLeader()) {
-                        socket.close();
-                        socket = new Socket("localhost", getServerPort(leaderID));
-                    }
-                    cr.request(request, socket);
-                } 
-                catch (IOException ex) {
-                    System.err.println("O servidor " + leaderID +" contactado pelo cliente " + id + " não está disponível! \n" + ex.getLocalizedMessage());
-                    leaderID = null;
+                if (leaderID == null) {
+                    leaderID = getRandomServer();
+                    socket = new Socket("localhost", getServerPort(leaderID));
+                    this.connectionAlive = true;
+                } else if (clientRequest.isWrongLeader()) {
+                    socket.close();
+                    socket = new Socket("localhost", getServerPort(leaderID));
                 }
+            } catch (IOException ex) {
+                System.err.println("O servidor " + leaderID + " contactado pelo cliente " + id + " não está disponível! \n" + ex.getLocalizedMessage());
+                leaderID = null;
+                this.connectionAlive = false;
             }
-            i++;
         }
+    }
+    
+    public void sendRequest(OperationType opType, String value){
+        if(!connectionAlive){
+            establishConnection();
+        }
+        if (response != null) {
+            ID_REQUEST++;
+            request = new Message("CL" + id + "-RQ" + ID_REQUEST, id, "REQUEST", opType, "CL" + id + "-KEY", String.valueOf(value));
+        }
+        else {
+            if(ID_REQUEST == 0){
+               request = new Message("CL" + id + "-RQ" + ID_REQUEST, id, "REQUEST", opType, "CL" + id + "-KEY", value); 
+            }
+        }
+        clientRequest.request(request, socket);
     }
 
     public int getId() {
@@ -82,31 +83,7 @@ public class Client implements Runnable {
     public void setLeaderID(String leaderID) {
         this.leaderID = leaderID;
     }
-    
-    private void setRequest(){
-        if (response != null) {
-            ID_REQUEST++;
-        }
-        OperationType opType = OperationType.getRandomOperation();
-        String key = "CL" + id + "-KEY";
-        String value = "CL" + id + "-RQ" + ID_REQUEST;
-        switch (opType) {
-            case PUT:
-            case GET:
-            case DEL:
-            case LIST:
-                break;
-            case CAS:
-                value = "CL" + id + "-RQ" + (ID_REQUEST-1) + "|" + "CL" + id + "-RQ" + ID_REQUEST;
-                break;
-        }
-        request = new Message("CL" + id + "-RQ" + ID_REQUEST, id, "REQUEST", opType, key, value);
-    }
-//    private int getRandomKey(){
-//        Random rnd = new Random();
-//        return rnd.nextInt(3)+1;
-//    }
-    
+
     public void setResponse(Message response) {
         this.response = response;
         System.out.println(response.getContent());
@@ -119,8 +96,5 @@ public class Client implements Runnable {
     private String getRandomServer() {
         Random rnd = new Random();
         return "srv" + rnd.nextInt(props.getHashMapProperties().size());
-    }
-    public void stopClient(){
-        this.stopClient = true;
     }
 }

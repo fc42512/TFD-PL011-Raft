@@ -26,7 +26,7 @@ public class KeyValueStore {
         keyValueStore.put(key, value);
     }
 
-    public String get(String key, String value) {
+    public String get(String key) {
         StringBuilder response = new StringBuilder();
         String currentValue = keyValueStore.get(key);
         if (currentValue == null) {
@@ -34,30 +34,29 @@ public class KeyValueStore {
         } else {
             response.append("A key " + key + " tem o valor " + currentValue);
         }
-        keyValueStore.put(key, value);
         return response.toString();
     }
 
-    public String delete(String key, String value) {
+    public String delete(String key) {
         StringBuilder response = new StringBuilder();
         String currentValue = keyValueStore.get(key);
-        if (currentValue == null) {
-            response.append("Não é possível apagar esta KEY, pois não existe!!");
+        if (currentValue == null || currentValue == "") {
+            response.append("Não é possível apagar o valor desta KEY, pois é nulo!!");
         } else {
-            
             response.append("A key " + key + " com o valor " + currentValue + " foi apagada");
+            keyValueStore.put(key, "");
         }
-        keyValueStore.put(key, value);
+        
         return response.toString();
     }
 
     public String compareAndSwap(String key, String oldValue, String newValue) {
         StringBuilder response = new StringBuilder();
-        String value = keyValueStore.get(key);
-        if (value != null) {
-            if (Objects.equals(value, oldValue)) {
+        String currentValue = keyValueStore.get(key);
+        if (currentValue != null) {
+            if (Objects.equals(currentValue, oldValue)) {
                 put(key, newValue);
-                response.append("Os valores comparados são iguais. A valor foi substituído!!");
+                response.append("Os valores comparados são iguais. O valor foi substituído!!");
             } else {
                 response.append("Os valores comparados não são iguais. A valor foi não substituído!!");
             }
@@ -67,10 +66,11 @@ public class KeyValueStore {
         return response.toString();
     }
 
-    public String list(String key, String value) {
+    public String list() {
         StringBuilder response = new StringBuilder("Chave---Valor\n");
-        keyValueStore.put(key, value);
-        response.append("-> " + key + " - " + keyValueStore.get(key) + "\n");
+        for (Map.Entry<String, String> keyValue : keyValueStore.entrySet()) {
+            response.append("-> " + keyValue.getKey() + " - " + keyValue.getValue() + "\n");
+        }
         return response.toString();
     }
 

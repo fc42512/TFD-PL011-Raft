@@ -31,7 +31,7 @@ public class ClientRequest {
     public void request(Message m, Socket socket) {
         Message response = null;
         try {
-            System.out.println("Ligado");
+            System.out.println("A receber pedido");
             ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
             oos.writeObject(m);
             oos.flush();
@@ -40,7 +40,7 @@ public class ClientRequest {
             ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
             response = (Message) ois.readObject();
             processResponse(response);
-            System.out.println("Recebido pedido");
+            System.out.println("Recebido pedido de volta");
 
         } catch (IOException ex) {
             System.err.println("O servidor contactado pelo cliente " + client.getId() + " deu erro na leitura/escrita!" + ex.getLocalizedMessage());
