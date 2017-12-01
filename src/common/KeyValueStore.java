@@ -75,7 +75,7 @@ public class KeyValueStore {
     }
 
     public String getStateMachineState() {
-        StringBuilder response = new StringBuilder("STATE_MACHINE_STATE\n");
+        StringBuilder response = new StringBuilder();
         for (Map.Entry<String, String> keyValue : keyValueStore.entrySet()) {
             response.append(keyValue.getKey() + ";" + keyValue.getValue() + "\n");
         }

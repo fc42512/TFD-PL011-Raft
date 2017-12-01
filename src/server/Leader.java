@@ -67,20 +67,33 @@ public class Leader implements Runnable {
                 }
 
                 /* Líder adiciona uma nova entrada no seu log */
-                server.appendLogEntry(new LogEntry(server.getCurrentTerm(), server.getCurrentLogIndex() + 1, m.getOperationType(), m.getKey(), m.getContent(), m.getId(), m.getSource()));
+                int index;
+                if (server.getLog().isEmpty()){
+                    index = server.getLastApplied();
+                }
+                else {
+                   index = server.getCurrentLogIndex() + 1;
+                }
+                server.appendLogEntry(new LogEntry(server.getCurrentTerm(), index, m.getOperationType(), m.getKey(), m.getContent(), m.getId(), m.getSource()));
                 System.out.println("Processar a resposta...");
 
                 /* Líder envia o AppendEntries RPC */
                 ArrayList<LogEntry> entries = new ArrayList<>();
-                entries.add(server.getLog().get(server.getCurrentLogIndex()));
+                entries.add(server.getLog().getLast());
                 int prevLogIndex, prevLogTerm, commitIndex;
-                if (server.getCurrentLogIndex() == 0) {
+                if (server.getLog().isEmpty() || server.getLog().size() == 1) {
                     prevLogIndex = -1;
                     prevLogTerm = -1;
                     commitIndex = 0;
-                } else {
-                    prevLogIndex = server.getCurrentLogIndex() - 1;
-                    prevLogTerm = server.getLog().get(server.getCurrentLogIndex() - 1).getTerm();
+                } 
+                else if ((server.getLog().isEmpty() || server.getLog().size() == 1) && server.getLastApplied() > 0){
+                    prevLogIndex = server.getLastApplied();
+                    prevLogTerm = server.getCurrentTerm();
+                    commitIndex = server.getCommitIndex();
+                }
+                else {
+                    prevLogIndex = server.getLog().get(server.getLog().size()-2).getIndex();
+                    prevLogTerm = server.getLog().get(server.getLog().size()-2).getTerm();
                     commitIndex = server.getCommitIndex();
                 }
                 sendAppendEntries(new AppendEntry(server.getCurrentTerm(), server.getServerID(), prevLogIndex, prevLogTerm, entries, commitIndex, true, m, "APPENDENTRY"));
@@ -155,11 +168,18 @@ public class Leader implements Runnable {
     }
 
     private void resolveConflictingEntries() {
+        int nextIndexFollower = 0;
         for (Map.Entry<String, Integer> follower : nextIndex.entrySet()) {
             if (server.getCurrentLogIndex() >= follower.getValue()) {
                 ArrayList<LogEntry> entries = new ArrayList<>();
+                for(int i=0; i < server.getLog().size(); i++){
+                    if(server.getLog().get(i).getIndex() == follower.getValue()){
+                        nextIndexFollower = i;
+                    }
+                }
                 for (int i = follower.getValue(); i <= server.getCurrentLogIndex(); i++) {
-                    entries.add(server.getLog().get(i));
+                    entries.add(server.getLog().get(nextIndexFollower));
+                    nextIndexFollower++;
                 }
                 int prevLogIndex, prevLogTerm;
                 if (follower.getValue() == 0) {

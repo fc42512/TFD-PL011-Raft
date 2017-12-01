@@ -47,10 +47,10 @@ public class Follower implements Runnable {
                         electionTimeOut.cancelElectionTimer();
                         AppendEntry response = processAppendEntries(ae);//executa o método que processa ao appendEntries
                         electionTimeOut.run();
-                        System.out.println("Recebida msg");
+                        System.out.println("Recebida msg no Follower");
 
                         sendMessageToLeader(response, server.getServersSockets(ae.getLeaderId()));
-                        System.out.println("Enviada msg");
+                        System.out.println("Enviada msg do Follower");
                     }
                 }
             }

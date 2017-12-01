@@ -37,6 +37,18 @@ public class LogEntry implements Serializable{
         this.commited = false;
         this.sentToClient = false;
     }
+    public LogEntry(int term, int index, OperationType operationType, String key, String value, String idMessage, int source, int majority, boolean commited, boolean sentToClient) {
+        this.term = term;
+        this.index = index;
+        this.operationType = operationType;
+        this.key = key;
+        this.value = value;
+        this.idMessage = idMessage;
+        this.source = source;
+        this.majority = majority;
+        this.commited = commited;
+        this.sentToClient = sentToClient;
+    }
 
     public int getTerm() {
         return term;

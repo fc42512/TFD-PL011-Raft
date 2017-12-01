@@ -66,7 +66,7 @@ public class Client {
         }
         if (response != null) {
             ID_REQUEST++;
-            request = new Message("CL" + id + "-RQ" + ID_REQUEST, id, "REQUEST", opType, "CL" + id + "-KEY", String.valueOf(value));
+            request = new Message("CL" + id + "-RQ" + ID_REQUEST, id, "REQUEST", opType, "CL" + id + "-KEY", value);
         }
         else {
             if(ID_REQUEST == 0){

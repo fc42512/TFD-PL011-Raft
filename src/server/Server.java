@@ -13,6 +13,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -21,7 +22,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  *
  * @author TFD-GRUPO11-17/18
  */
-public class Server implements Runnable {
+public class Server {
 
     private String serverID;
     private boolean stopServer;
@@ -41,7 +42,7 @@ public class Server implements Runnable {
 
     private int currentTerm;
     private String votedFor; //candidateId que recebeu o voto no termo atual (null se não há)
-    private ArrayList<LogEntry> log;
+    private LinkedList<LogEntry> log;
     private int commitIndex;//indice do último log entry commitado
     private int lastApplied;//indice do último log entry executado pela máquina de estados
 
@@ -63,10 +64,10 @@ public class Server implements Runnable {
         this.keyValueStore = new KeyValueStore();
         this.fileHandler = new FileHandler(this);
         System.out.println("O servidor " + serverID + " arrancou!");
-
+        
         this.currentTerm = 0;
         this.votedFor = null;
-        this.log = new ArrayList<LogEntry>();
+        this.log = new LinkedList<LogEntry>();
         this.commitIndex = 0;
         this.lastApplied = 0;
 
@@ -75,10 +76,25 @@ public class Server implements Runnable {
         stateMachine = new HashMap<>();
         clientSockets = new HashMap<>();
         serversSockets = new HashMap<>();
+        
+        
+
+//        log = fileHandler.readLogFile();
+//        for(LogEntry l :log){
+//           System.out.println(l.getTerm() + " - " + l.getIndex() + " - " + l.getOperationType() + " - " + l.getKey() + " - " + l.getValue() + " - " + l.getIdMessage()
+//            + " - " + l.getSource() + " - " + l.getMajority() + " - " + l.isCommited() + " - " + l.isSentToClient()); 
+//        }
+//        fileHandler.readSnapshotFile();
+//        System.out.println("last apllied:" + lastApplied);
+//        System.out.println("term:" + getCurrentTerm());
+//        System.out.println(keyValueStore.list());
     }
 
-    @Override
-    public void run() {
+
+    public void initiateServer() {
+        
+        installSnapshot();
+        loadLog();
 
         /* Criar Socket para escutar os clientes */
         try {
@@ -127,6 +143,10 @@ public class Server implements Runnable {
         this.leaderID = leaderID;
     }
 
+    public void setID_MESSAGE(int ID_MESSAGE) {
+        this.ID_MESSAGE = ID_MESSAGE;
+    }
+
     public int getIDMESSAGE() {
         return ID_MESSAGE;
     }
@@ -171,16 +191,28 @@ public class Server implements Runnable {
         this.commitIndex = commitIndex;
     }
 
+    public void setLastApplied(int lastApplied) {
+        this.lastApplied = lastApplied;
+    }
+
     public int getLastApplied() {
         return lastApplied;
     }
 
-    public ArrayList<LogEntry> getLog() {
+    public LinkedList<LogEntry> getLog() {
         return log;
+    }
+
+    public HashMap<String, Message> getStateMachine() {
+        return stateMachine;
     }
 
     public Message getStateMachineResult(String id) {
         return stateMachine.get(id);
+    }
+
+    public KeyValueStore getKeyValueStore() {
+        return keyValueStore;
     }
 
     public LinkedBlockingQueue<Message> getClientQueue() {
@@ -264,7 +296,7 @@ public class Server implements Runnable {
     }
 
     public int getCurrentLogIndex() {
-        return log.size() - 1;
+        return log.getLast().getIndex();
     }
 
     public void addProcessClientSockets(int id, ProcessClient processClient) {
@@ -399,9 +431,26 @@ public class Server implements Runnable {
     
     public void takeSnapshot(){
         String snapshot = "" + lastApplied + ";";
-        snapshot += getLastAppliedTerm() + "\n";
+        snapshot += getLastAppliedTerm() + ";";
+        snapshot += getIDMESSAGE() + "\n";
         snapshot += keyValueStore.getStateMachineState();
         fileHandler.writeToFile(snapshot, true);
+    }
+    
+    private void installSnapshot(){
+        fileHandler.readSnapshotFile();
+    }
+    
+    private void loadLog() {
+        fileHandler.readLogFile();
+        for(LogEntry l : log){
+            if(l.isCommited()){
+                commitIndex = l.getIndex();
+            }
+            else {
+                break;
+            }
+        }
     }
     
     private int getLastAppliedTerm(){
