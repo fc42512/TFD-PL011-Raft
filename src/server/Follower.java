@@ -94,32 +94,32 @@ public class Follower implements Runnable {
             } else if (Objects.equals(ae.getType(), "APPENDENTRY")) {
                 /* Responde falso se term < currentTerm */
                 if (ae.getTerm() < server.getCurrentTerm()) {
-                    return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, server.getLastApplied(), false, ae.getMessage(), "APPENDENTRY");
+                    return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, server.getLog().getLast().getIndex(), false, ae.getMessage(), "APPENDENTRY");
 
                     /* Responde falso se term of prevLogIndex != prevLogTerm */
                 } else if (!server.getLog().isEmpty() && ae.getPrevLogIndex() != -1) {
-                    if (ae.getPrevLogIndex() >= server.getLog().size()) {
-//                      deleteConflictEntries(ae.getPrevLogIndex());
-                        return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, server.getLastApplied(), false, ae.getMessage(), "APPENDENTRY");
-                    } else if (server.getLog().get(ae.getPrevLogIndex()).getTerm() != ae.getPrevLogTerm()) {
-                        deleteConflictEntries(ae.getPrevLogIndex());
-                        return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, server.getLastApplied(), false, ae.getMessage(), "APPENDENTRY");
-                    } else if (server.getLog().get(ae.getPrevLogIndex()).getIndex() == ae.getPrevLogIndex()) {
-                        deleteConflictEntries(ae.getPrevLogIndex());
+                    if (ae.getPrevLogIndex() >= server.getLog().getLast().getIndex()) {
+                      deleteConflictEntries(server.getLastApplied());
+                        return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, server.getLog().getLast().getIndex(), false, ae.getMessage(), "APPENDENTRY");
+                    } else if (server.getLog().getLast().getTerm() != ae.getPrevLogTerm()) {
+                        deleteConflictEntries(server.getLastApplied());
+                        return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, server.getLog().getLast().getIndex(), false, ae.getMessage(), "APPENDENTRY");
+                    } else if (server.getLog().getLast().getIndex() == ae.getPrevLogIndex()) {
+//                        deleteConflictEntries(ae.getPrevLogIndex());
                         addNewLogEntries(ae);
                         server.applyNewEntries();
-                        return new AppendEntry(server.getCurrentTerm(), server.getServerID(), ae.getPrevLogIndex() + ae.getEntries().size(), ae.getPrevLogTerm(), null, server.getLastApplied(), true, ae.getMessage(), "APPENDENTRY");
+                        return new AppendEntry(server.getCurrentTerm(), server.getServerID(), ae.getPrevLogIndex() + ae.getEntries().size(), ae.getPrevLogTerm(), null, server.getLog().getLast().getIndex(), true, ae.getMessage(), "APPENDENTRY");
                     } else if (ae.getPrevLogIndex() == -1) {
                         addNewLogEntries(ae);
                         server.applyNewEntries();
-                        return new AppendEntry(server.getCurrentTerm(), server.getServerID(), ae.getPrevLogIndex() + ae.getEntries().size(), ae.getPrevLogTerm(), null, server.getLastApplied(), true, ae.getMessage(), "APPENDENTRY");
+                        return new AppendEntry(server.getCurrentTerm(), server.getServerID(), ae.getPrevLogIndex() + ae.getEntries().size(), ae.getPrevLogTerm(), null, server.getLog().getLast().getIndex(), true, ae.getMessage(), "APPENDENTRY");
                 
                     }
                 } else {
                     if (ae.getPrevLogIndex() == -1) {
                         addNewLogEntries(ae);
                         server.applyNewEntries();
-                        return new AppendEntry(server.getCurrentTerm(), server.getServerID(), ae.getPrevLogIndex() + ae.getEntries().size(), ae.getPrevLogTerm(), null, server.getLastApplied(), true, ae.getMessage(), "APPENDENTRY");
+                        return new AppendEntry(server.getCurrentTerm(), server.getServerID(), ae.getPrevLogIndex() + ae.getEntries().size(), ae.getPrevLogTerm(), null, server.getLog().getLast().getIndex(), true, ae.getMessage(), "APPENDENTRY");
                     } else {
                         return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, -1, false, ae.getMessage(), "APPENDENTRY");
                     }

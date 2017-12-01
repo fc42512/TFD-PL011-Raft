@@ -64,7 +64,7 @@ public class Server {
         this.keyValueStore = new KeyValueStore();
         this.fileHandler = new FileHandler(this);
         System.out.println("O servidor " + serverID + " arrancou!");
-        
+
         this.currentTerm = 0;
         this.votedFor = null;
         this.log = new LinkedList<LogEntry>();
@@ -76,8 +76,6 @@ public class Server {
         stateMachine = new HashMap<>();
         clientSockets = new HashMap<>();
         serversSockets = new HashMap<>();
-        
-        
 
 //        log = fileHandler.readLogFile();
 //        for(LogEntry l :log){
@@ -90,9 +88,8 @@ public class Server {
 //        System.out.println(keyValueStore.list());
     }
 
-
     public void initiateServer() {
-        
+
         installSnapshot();
         loadLog();
 
@@ -299,6 +296,17 @@ public class Server {
         return log.getLast().getIndex();
     }
 
+    public int getLogEntryIndexInLog(int trueIndex) {
+        int index = -1;
+        for (int i = 0; i < log.size(); i++) {
+            if (log.get(i).getIndex() == trueIndex) {
+                index = i;
+                break;
+            }
+        }
+        return index;
+    }
+
     public void addProcessClientSockets(int id, ProcessClient processClient) {
         clientSockets.put(id, processClient);
     }
@@ -392,7 +400,7 @@ public class Server {
                 result = keyValueStore.list();
                 break;
             case CAS:
-                String [] stringSplit = logEntry.getValue().split("\\|");
+                String[] stringSplit = logEntry.getValue().split("\\|");
                 result = keyValueStore.compareAndSwap(logEntry.getKey(), stringSplit[0], stringSplit[1]);
                 break;
         }
@@ -402,13 +410,19 @@ public class Server {
     public AppendEntry receiverRequestVoteValidation(AppendEntry ae) {
         AppendEntry rv = null;
         int lastLogIndex, lastLogTerm;
-        if (getCurrentLogIndex() == -1) {
-            lastLogIndex = -1;
-            lastLogTerm = 0;
+        if (log.isEmpty() || log.size() == 1) {
+            if (lastApplied > 0) {
+                lastLogIndex = lastApplied;
+                lastLogTerm = currentTerm;
+            } else {
+                lastLogIndex = -1;
+                lastLogTerm = -1;
+            }
         } else {
-            lastLogIndex = getCurrentLogIndex();
-            lastLogTerm = getLog().get(getCurrentLogIndex()).getTerm();
+            lastLogIndex = log.get(log.size() - 2).getIndex();
+            lastLogTerm = log.get(log.size() - 2).getTerm();
         }
+
         if (ae.getTerm() < getCurrentTerm()) {
             rv = new AppendEntry(getCurrentTerm(), getServerID(), 0, 0, null, 0, false, null, "REQUESTVOTE");
         } else if (getVotedFor() == null || Objects.equals(getVotedFor(), ae.getLeaderId())) {
@@ -428,35 +442,34 @@ public class Server {
         }
         return rv;
     }
-    
-    public void takeSnapshot(){
+
+    public void takeSnapshot() {
         String snapshot = "" + lastApplied + ";";
         snapshot += getLastAppliedTerm() + ";";
         snapshot += getIDMESSAGE() + "\n";
         snapshot += keyValueStore.getStateMachineState();
         fileHandler.writeToFile(snapshot, true);
     }
-    
-    private void installSnapshot(){
+
+    private void installSnapshot() {
         fileHandler.readSnapshotFile();
     }
-    
+
     private void loadLog() {
         fileHandler.readLogFile();
-        for(LogEntry l : log){
-            if(l.isCommited()){
+        for (LogEntry l : log) {
+            if (l.isCommited()) {
                 commitIndex = l.getIndex();
-            }
-            else {
+            } else {
                 break;
             }
         }
     }
-    
-    private int getLastAppliedTerm(){
+
+    private int getLastAppliedTerm() {
         int lastAppliedTerm = -1;
-        for(LogEntry l : log){
-            if(l.getIndex() == lastApplied){
+        for (LogEntry l : log) {
+            if (l.getIndex() == lastApplied) {
                 return l.getTerm();
             }
         }

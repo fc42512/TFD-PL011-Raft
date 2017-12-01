@@ -90,7 +90,7 @@ public class Candidate implements Runnable {
         if (startLeaderOrFollower) {
             startLeaderOrFollower();
         }
-        if (restartCandidate){
+        if (restartCandidate) {
             new Thread(new Candidate(server)).start();
         }
     }
@@ -121,12 +121,17 @@ public class Candidate implements Runnable {
     private AppendEntry createRequestVote() {
         int lastLogIndex, lastLogTerm;
         server.incrementCurrentTerm();
-        if (server.getCurrentLogIndex() == -1) {
-            lastLogIndex = -1;
-            lastLogTerm = 0;
+        if (server.getLog().isEmpty() || server.getLog().size() == 1) {
+            if (server.getLastApplied() > 0) {
+                lastLogIndex = server.getLastApplied();
+                lastLogTerm = server.getCurrentTerm();
+            } else {
+                lastLogIndex = -1;
+                lastLogTerm = -1;
+            }
         } else {
-            lastLogIndex = server.getCurrentLogIndex();
-            lastLogTerm = server.getLog().get(server.getCurrentLogIndex()).getTerm();
+            lastLogIndex = server.getLog().get(server.getLog().size() - 2).getIndex();
+            lastLogTerm = server.getLog().get(server.getLog().size() - 2).getTerm();
         }
         AppendEntry rv = new AppendEntry(server.getCurrentTerm(), server.getServerID(), lastLogIndex, lastLogTerm, null, 0, false, null, "REQUESTVOTE");
         return rv;
@@ -147,8 +152,8 @@ public class Candidate implements Runnable {
             rv.cancelRequestVote();
         }
     }
-    
-    public void stopCandidate(){
+
+    public void stopCandidate() {
         this.stopCandidate = true;
         if (server.getProcessServer() != null) {
             server.getProcessServer().stopProcessServer();
