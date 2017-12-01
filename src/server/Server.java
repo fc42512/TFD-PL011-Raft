@@ -11,7 +11,6 @@ import common.PropertiesManager;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -22,7 +21,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  *
  * @author TFD-GRUPO11-17/18
  */
-public class Server {
+public class Server implements Runnable {
 
     private String serverID;
     private boolean stopServer;
@@ -88,7 +87,8 @@ public class Server {
 //        System.out.println(keyValueStore.list());
     }
 
-    public void initiateServer() {
+    @Override
+    public void run() {
 
         installSnapshot();
         loadLog();

@@ -24,7 +24,7 @@ public class LaunchServer {
 
         String serverID = "srv" + sc.nextInt();
         Server server = new Server(serverID, serversProps, clientsProps);
-        server.initiateServer();
+        new Thread(server).start();
 
         while (true) {
             System.out.println("Qual a operação que pretende executar?\n"
