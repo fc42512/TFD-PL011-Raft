@@ -18,15 +18,15 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class TalkToFollower implements Runnable {
 
     private Server server;
-    private int otherServerPort;
+    private String[] otherServerAddress;
     private AppendEntry response;
     private LinkedBlockingQueue<AppendEntry> appendEntriesToSend;
     private boolean connectionAlive;
     private boolean stopTalkToFollower;
 
-    public TalkToFollower(Server server, int otherServerPort) {
+    public TalkToFollower(Server server, String[] otherServerAddress) {
         this.server = server;
-        this.otherServerPort = otherServerPort;
+        this.otherServerAddress = otherServerAddress;
         this.response = null;
         this.appendEntriesToSend = new LinkedBlockingQueue<>();
         this.connectionAlive = false;
@@ -40,7 +40,7 @@ public class TalkToFollower implements Runnable {
         ObjectInputStream ois = null;
         while (!connectionAlive && !stopTalkToFollower) {
             try {
-                socket = new Socket("localhost", otherServerPort);
+                socket = new Socket(otherServerAddress[0], Integer.parseInt(otherServerAddress[1]));
                 connectionAlive = true;
                 while (connectionAlive && !stopTalkToFollower) {
                     if (!appendEntriesToSend.isEmpty()) {
@@ -54,7 +54,7 @@ public class TalkToFollower implements Runnable {
                             response = (AppendEntry) ois.readObject();
                             if (response != null && !stopTalkToFollower) {
                                 server.getServerQueue().add(response);
-                                System.out.println("Enviado para o líder de novo...");
+                                System.out.println("Recebido pelo líder vindo do Follower...");
                             }
                         } else {
                             oos.close();

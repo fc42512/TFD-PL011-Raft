@@ -5,15 +5,16 @@
  */
 package server;
 
-import com.sun.org.apache.bcel.internal.util.Objects;
 import common.OperationType;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.io.PrintWriter;
+import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -41,7 +42,6 @@ public class FileHandler {
             filename = FILE_PATH_WINDOWS + LOG_FILE_NAME + server.getServerID() + FILE_TYPE;
         }
         try {
-            File file = new File(filename);
             FileWriter writer = new FileWriter(filename, true);
             BufferedWriter bufferedWriter = new BufferedWriter(writer);
 //            if (!file.exists()) {
@@ -76,6 +76,26 @@ public class FileHandler {
             System.out.println("Falha ao ler o ficheiro de LOG " + filename + " ou o ficheiro ainda não existe!");
         }
     }
+    
+    public void clearLogFile(){
+        FileWriter writer = null;
+        try {
+            String filename = FILE_PATH_WINDOWS + LOG_FILE_NAME + server.getServerID() + FILE_TYPE;
+            writer = new FileWriter(filename, false);
+            PrintWriter pw = new PrintWriter(writer, false);
+            pw.print("");
+            pw.close();
+            writer.close();
+        } catch (IOException ex) {
+            Logger.getLogger(FileHandler.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                writer.close();
+            } catch (IOException ex) {
+                Logger.getLogger(FileHandler.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
 
     public void readSnapshotFile() {
         String filename = FILE_PATH_WINDOWS + SNAPSHOT_FILE_NAME + server.getServerID() + FILE_TYPE;
@@ -93,8 +113,10 @@ public class FileHandler {
                     server.setID_MESSAGE(Integer.valueOf(splittedLine[2]));
                     isFirstLine = false;
                 } else {
-                    splittedLine = line.split(";");
-                    server.getKeyValueStore().put(splittedLine[0], splittedLine[1]);
+                    if (!Objects.equals(line, "")) {
+                        splittedLine = line.split(";");
+                        server.getKeyValueStore().put(splittedLine[0], splittedLine[1]);
+                    }
                 }
             }
             bufferedReader.close();

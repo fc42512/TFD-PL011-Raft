@@ -98,7 +98,7 @@ public class Follower implements Runnable {
 
                     /* Responde falso se term of prevLogIndex != prevLogTerm */
                 } else if (!server.getLog().isEmpty() && ae.getPrevLogIndex() != -1) {
-                    if (ae.getPrevLogIndex() >= server.getLog().getLast().getIndex()) {
+                    if (ae.getPrevLogIndex() > server.getLog().getLast().getIndex()) {
                       deleteConflictEntries(server.getLastApplied());
                         return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, server.getLog().getLast().getIndex(), false, ae.getMessage(), "APPENDENTRY");
                     } else if (server.getLog().getLast().getTerm() != ae.getPrevLogTerm()) {
@@ -117,8 +117,11 @@ public class Follower implements Runnable {
                     }
                 } else {
                     if (ae.getPrevLogIndex() == -1) {
+                        if(!server.getLog().isEmpty()){
+                            server.getLog().clear();
+                        }
                         addNewLogEntries(ae);
-                        server.applyNewEntries();
+//                        server.applyNewEntries();
                         return new AppendEntry(server.getCurrentTerm(), server.getServerID(), ae.getPrevLogIndex() + ae.getEntries().size(), ae.getPrevLogTerm(), null, server.getLog().getLast().getIndex(), true, ae.getMessage(), "APPENDENTRY");
                     } else {
                         return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, -1, false, ae.getMessage(), "APPENDENTRY");

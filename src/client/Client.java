@@ -46,11 +46,11 @@ public class Client {
             try {
                 if (leaderID == null) {
                     leaderID = getRandomServer();
-                    socket = new Socket("localhost", getServerPort(leaderID));
+                    socket = new Socket(getServerIP(leaderID), getServerPort(leaderID));
                     this.connectionAlive = true;
                 } else if (clientRequest.isWrongLeader()) {
                     socket.close();
-                    socket = new Socket("localhost", getServerPort(leaderID));
+                    socket = new Socket(getServerIP(leaderID), getServerPort(leaderID));
                 }
             } catch (IOException ex) {
                 System.err.println("O servidor " + leaderID + " contactado pelo cliente " + id + " não está disponível! \n" + ex.getLocalizedMessage());
@@ -74,6 +74,12 @@ public class Client {
             }
         }
         clientRequest.request(request, socket);
+        if(!clientRequest.isFinishedRequest()){
+            connectionAlive = false;
+            leaderID = null;
+            establishConnection();
+            clientRequest.request(request, socket);
+        }
     }
 
     public int getId() {
@@ -89,6 +95,10 @@ public class Client {
         System.out.println(response.getContent());
     }
 
+    private String getServerIP(String serverID) {
+        return props.getServerAdress(serverID)[0];
+    }
+    
     private int getServerPort(String serverID) {
         return Integer.parseInt(props.getServerAdress(serverID)[1]);
     }

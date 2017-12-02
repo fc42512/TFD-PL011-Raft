@@ -31,7 +31,7 @@ public class ClientRequest {
     public void request(Message m, Socket socket) {
         Message response = null;
         try {
-            System.out.println("A receber pedido");
+            System.out.println("A preparar para enviar pedido");
             ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
             oos.writeObject(m);
             oos.flush();
@@ -44,6 +44,7 @@ public class ClientRequest {
 
         } catch (IOException ex) {
             System.err.println("O servidor contactado pelo cliente " + client.getId() + " deu erro na leitura/escrita!" + ex.getLocalizedMessage());
+            isFinishedRequest = false;
 
         } catch (ClassNotFoundException ex) {
             System.err.println("Erro na conversão da classe \n" + ex.getLocalizedMessage());
@@ -56,6 +57,7 @@ public class ClientRequest {
                 client.setLeaderID(response.getContent());
                 isFinishedRequest = false;
                 isWrongLeader = true;
+//                System.out.println("O seu pedido não foi tratado, por favor repita a operação!");
             }
             else if (Objects.equals(response.getMessageType(),"RESPONSE")){
                 client.setResponse(response);

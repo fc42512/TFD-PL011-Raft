@@ -449,6 +449,7 @@ public class Server implements Runnable {
         snapshot += getIDMESSAGE() + "\n";
         snapshot += keyValueStore.getStateMachineState();
         fileHandler.writeToFile(snapshot, true);
+        fileHandler.clearLogFile();
     }
 
     private void installSnapshot() {

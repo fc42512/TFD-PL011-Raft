@@ -113,35 +113,35 @@ public class Leader implements Runnable {
                         }
                     }
                 } else if (ae.isSuccess()) {
-                    le = server.getLog().get(ae.getPrevLogIndex());
-                    if (!le.isCommited() && (ae.getPrevLogIndex() >= server.getCommitIndex())) {
-                        le.incrementMajority();//incrementa para tentar fazer maioria numa dada log entry
-                        if (le.getMajority() > numFollowers) {
-                            server.setCommitIndex(ae.getPrevLogIndex());//actualiza último indice comitado
-                            System.out.println("Temos maioria...");
+                    int followerLastApplied = server.getLogEntryIndexInLog(ae.getLeaderCommit());
+                    if (followerLastApplied != -1) {
+                        le = server.getLog().get(followerLastApplied);
+                        if (!le.isCommited() && (ae.getLeaderCommit() >= server.getCommitIndex())) {
+                            le.incrementMajority();//incrementa para tentar fazer maioria numa dada log entry
+                            if (le.getMajority() > numFollowers) {
+                                server.setCommitIndex(ae.getLeaderCommit());//actualiza último indice comitado
+                                System.out.println("Temos maioria...");
 
-                            /* Líder executa o comando na sua máquina de estados */
-                            System.out.println("Executa na máquina de estados...");
-                            server.applyNewEntries();//executa comando na máquina de estados
+                                /* Líder executa o comando na sua máquina de estados */
+                                System.out.println("Executa na máquina de estados...");
+                                server.applyNewEntries();//executa comando na máquina de estados
 
-                            int indexFollowerActualizado = server.getLogEntryIndexInLog(ae.getLeaderCommit());
-                            matchIndex.put(ae.getLeaderId(), indexFollowerActualizado);//actualiza o ultimo indice commitado pelo follower
-                            nextIndex.put(ae.getLeaderId(), indexFollowerActualizado + 1);//actualiza o proximo indice a enviar para o follower
+                                matchIndex.put(ae.getLeaderId(), ae.getLeaderCommit());//actualiza o ultimo indice commitado pelo follower
+                                nextIndex.put(ae.getLeaderId(), ae.getLeaderCommit() + 1);//actualiza o proximo indice a enviar para o follower
 
-                            /* Líder resolve as inconsistências dos followers */
-                            resolveConflictingEntries();
+                                /* Líder resolve as inconsistências dos followers */
+                                resolveConflictingEntries();
 
-                            /* Realiza um snapshot da máquina de estados actual */
-                            if (server.getLog().size() > 5) {
-                                server.takeSnapshot();
+                                /* Realiza um snapshot da máquina de estados actual */
+                                if (server.getLog().size() > 5) {
+                                    server.takeSnapshot();
+                                }
                             }
                         }
                     }
-
                 } else {
-                    int indexFollowerActualizado = server.getLogEntryIndexInLog(ae.getLeaderCommit());
-                    matchIndex.put(ae.getLeaderId(), indexFollowerActualizado);//actualiza o ultimo indice commitado pelo follower
-                    nextIndex.put(ae.getLeaderId(), indexFollowerActualizado + 1);//actualiza o proximo indice a enviar para o follower
+                    matchIndex.put(ae.getLeaderId(), ae.getLeaderCommit());//actualiza o ultimo indice commitado pelo follower
+                    nextIndex.put(ae.getLeaderId(), ae.getLeaderCommit() + 1);//actualiza o proximo indice a enviar para o follower
                 }
             }
         }
@@ -154,7 +154,7 @@ public class Leader implements Runnable {
         for (int i = 0; i < server.getServersProps().getHashMapProperties().size(); i++) {
             serverToTalk = "srv" + i;
             if (!server.getServerID().equals(serverToTalk)) {
-                ttf = new TalkToFollower(server, Integer.parseInt(server.getServersProps().getServerAdress(serverToTalk)[1]));
+                ttf = new TalkToFollower(server, server.getServersProps().getServerAdress(serverToTalk));
                 followers.put(serverToTalk, ttf);
                 new Thread(talkToFollowers, ttf).start();
             }
@@ -170,9 +170,9 @@ public class Leader implements Runnable {
 
     private void resolveConflictingEntries() {
         for (Map.Entry<String, Integer> follower : nextIndex.entrySet()) {
-            if (server.getCurrentLogIndex() >= follower.getValue()) {
+            if (server.getCommitIndex() >= follower.getValue()) {
                 ArrayList<LogEntry> entries = new ArrayList<>();
-                for (int i = follower.getValue(); i <= server.getCurrentLogIndex(); i++) {
+                for (int i = server.getLogEntryIndexInLog(follower.getValue()); i <= server.getLogEntryIndexInLog(server.getCommitIndex()); i++) {
                     entries.add(server.getLog().get(i));
                 }
                 int prevLogIndex, prevLogTerm;
@@ -180,8 +180,10 @@ public class Leader implements Runnable {
                     prevLogIndex = -1;
                     prevLogTerm = -1;
                 } else {
-                    prevLogIndex = follower.getValue() - 1;
-                    prevLogTerm = server.getLog().get(follower.getValue() - 1).getTerm();
+//                    prevLogIndex = follower.getValue() - 1;
+//                    prevLogTerm = server.getLog().get(follower.getValue() - 1).getTerm();
+                    prevLogIndex = server.getLastApplied() - 1;
+                    prevLogTerm = server.getCurrentTerm();
                 }
                 AppendEntry ae = new AppendEntry(server.getCurrentTerm(), server.getServerID(), prevLogIndex, prevLogTerm, entries, server.getCommitIndex(), true, null, "APPENDENTRY");
                 followers.get(follower.getKey()).storeAppendEntryInQueue(ae);

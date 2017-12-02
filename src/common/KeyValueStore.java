@@ -7,7 +7,6 @@ package common;
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.SortedMap;
 import java.util.TreeMap;
 
 /**
@@ -44,7 +43,7 @@ public class KeyValueStore {
             response.append("Não é possível apagar o valor desta KEY, pois é nulo!!");
         } else {
             response.append("A key " + key + " com o valor " + currentValue + " foi apagada");
-            keyValueStore.put(key, "");
+            keyValueStore.put(key, "0");
         }
         
         return response.toString();
