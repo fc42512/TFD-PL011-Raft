@@ -81,10 +81,13 @@ public class Server implements Runnable {
 //           System.out.println(l.getTerm() + " - " + l.getIndex() + " - " + l.getOperationType() + " - " + l.getKey() + " - " + l.getValue() + " - " + l.getIdMessage()
 //            + " - " + l.getSource() + " - " + l.getMajority() + " - " + l.isCommited() + " - " + l.isSentToClient()); 
 //        }
-//        fileHandler.readSnapshotFile();
-//        System.out.println("last apllied:" + lastApplied);
-//        System.out.println("term:" + getCurrentTerm());
-//        System.out.println(keyValueStore.list());
+//        AppendEntry ae = fileHandler.readSnapshotFileToFollower();
+//        System.out.println("last apllied:" + ae.getPrevLogIndex());
+//        System.out.println("keyValueStore:" + ae.getType());
+//        String [] s = ae.getType().split(";");
+//        for(int i=0; i<s.length; i++){
+//            System.out.println(s[i]);
+//        }
     }
 
     @Override
@@ -95,11 +98,11 @@ public class Server implements Runnable {
 
         /* Criar Socket para escutar os clientes */
         try {
-            socketForClients = new ServerSocket(Integer.parseInt(clientsProps.getServerAdress(serverID)[1]));
+            socketForClients = new ServerSocket(Integer.parseInt(clientsProps.getServerAdress(serverID)[1]), 50);
             socketForClients.setReuseAddress(true);
 
             /* Criar Socket para escutar os servidores */
-            ServerSocket socketForServers = new ServerSocket(Integer.parseInt(serversProps.getServerAdress(serverID)[1]));
+            ServerSocket socketForServers = new ServerSocket(Integer.parseInt(serversProps.getServerAdress(serverID)[1]), 50);
             socketForServers.setReuseAddress(true);
 
             listenOtherServers = new ListenOtherServers(this, socketForServers);
@@ -210,6 +213,14 @@ public class Server implements Runnable {
 
     public KeyValueStore getKeyValueStore() {
         return keyValueStore;
+    }
+
+    public FileHandler getFileHandler() {
+        return fileHandler;
+    }
+
+    public void setFileHandler(FileHandler fileHandler) {
+        this.fileHandler = fileHandler;
     }
 
     public LinkedBlockingQueue<Message> getClientQueue() {
@@ -364,7 +375,7 @@ public class Server implements Runnable {
             aux = lastApplied;
         }
         for (int i = aux; i <= commitIndex; i++) {
-            execute(log.get(i));
+            execute(log.get(getLogEntryIndexInLog(i)));
         }
         lastApplied = commitIndex;
     }
@@ -448,8 +459,19 @@ public class Server implements Runnable {
         snapshot += getLastAppliedTerm() + ";";
         snapshot += getIDMESSAGE() + "\n";
         snapshot += keyValueStore.getStateMachineState();
+
+//        if (fileHandler.deleteSnapshotFile()) {
+        fileHandler.deleteSnapshotFile();
         fileHandler.writeToFile(snapshot, true);
         fileHandler.clearLogFile();
+        LinkedList<LogEntry> newLog = new LinkedList<>();
+        for (int i = 0; i < log.size(); i++) {
+            if (log.get(i).getIndex() > lastApplied) {
+                newLog.add(log.get(i));
+            }
+        }
+        log = newLog;
+//        }
     }
 
     private void installSnapshot() {

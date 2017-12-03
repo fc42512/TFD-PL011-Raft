@@ -51,6 +51,7 @@ public class Client {
                 } else if (clientRequest.isWrongLeader()) {
                     socket.close();
                     socket = new Socket(getServerIP(leaderID), getServerPort(leaderID));
+                    this.connectionAlive = true;
                 }
             } catch (IOException ex) {
                 System.err.println("O servidor " + leaderID + " contactado pelo cliente " + id + " não está disponível! \n" + ex.getLocalizedMessage());
@@ -76,7 +77,6 @@ public class Client {
         clientRequest.request(request, socket);
         if(!clientRequest.isFinishedRequest()){
             connectionAlive = false;
-            leaderID = null;
             establishConnection();
             clientRequest.request(request, socket);
         }

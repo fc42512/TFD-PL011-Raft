@@ -8,6 +8,7 @@ package server;
 import common.OperationType;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -23,6 +24,7 @@ import java.util.logging.Logger;
 public class FileHandler {
 
     private final static String FILE_PATH_WINDOWS = "F:\\Programação\\TFD-011-Raft\\";
+//    private final static String FILE_PATH_WINDOWS = "E:\\";
     private final static String FILE_PATH_LINUX = "";
     private final static String LOG_FILE_NAME = "log";
     private final static String SNAPSHOT_FILE_NAME = "snapshot";
@@ -124,5 +126,42 @@ public class FileHandler {
             System.out.println("Falha ao ler o ficheiro de SNAPSHOT " + filename + " ou o ficheiro ainda não existe!");
         }
     }
-
+    
+    public void deleteSnapshotFile(){
+        String filename = FILE_PATH_WINDOWS + SNAPSHOT_FILE_NAME + server.getServerID() + FILE_TYPE;
+        File file = new File(filename);
+        file.delete();
+    }
+    
+    public AppendEntry readSnapshotFileToFollower() {
+        String filename = FILE_PATH_WINDOWS + SNAPSHOT_FILE_NAME + server.getServerID() + FILE_TYPE;
+        boolean isFirstLine = true;
+        AppendEntry ae = null;
+        try {
+            FileReader reader = new FileReader(filename);
+            BufferedReader bufferedReader = new BufferedReader(reader);
+            String line;
+            String keyValueStore = "";
+            String[] splittedLine;
+            int lastIncludedIndex = 0, lastIncludedTerm = 0, ID_Message = 0;
+            while ((line = bufferedReader.readLine()) != null) {
+                if (isFirstLine) {
+                    splittedLine = line.split(";");
+                    lastIncludedIndex = Integer.valueOf(splittedLine[0]);
+                    lastIncludedTerm = Integer.valueOf(splittedLine[1]);
+                    ID_Message = Integer.valueOf(splittedLine[2]);
+                    isFirstLine = false;
+                } else {
+                    if (!Objects.equals(line, "")) {
+                        keyValueStore += line;
+                    }
+                }
+            }
+            bufferedReader.close();
+            ae = new AppendEntry(server.getCurrentTerm(), server.getLeaderID(), lastIncludedIndex, lastIncludedTerm, null, ID_Message, true, null, keyValueStore);
+        } catch (IOException iOException) {
+            System.out.println("Falha ao ler o ficheiro de SNAPSHOT " + filename + " ou o ficheiro ainda não existe!");
+        }
+        return ae;
+    }
 }

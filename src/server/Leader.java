@@ -69,7 +69,7 @@ public class Leader implements Runnable {
                 /* Líder adiciona uma nova entrada no seu log */
                 int index;
                 if (server.getLog().isEmpty()) {
-                    index = server.getLastApplied();
+                    index = server.getLastApplied() + 1;
                 } else {
                     index = server.getCurrentLogIndex() + 1;
                 }
@@ -172,20 +172,26 @@ public class Leader implements Runnable {
         for (Map.Entry<String, Integer> follower : nextIndex.entrySet()) {
             if (server.getCommitIndex() >= follower.getValue()) {
                 ArrayList<LogEntry> entries = new ArrayList<>();
-                for (int i = server.getLogEntryIndexInLog(follower.getValue()); i <= server.getLogEntryIndexInLog(server.getCommitIndex()); i++) {
-                    entries.add(server.getLog().get(i));
-                }
-                int prevLogIndex, prevLogTerm;
-                if (follower.getValue() == 0) {
-                    prevLogIndex = -1;
-                    prevLogTerm = -1;
-                } else {
-//                    prevLogIndex = follower.getValue() - 1;
+                AppendEntry ae;
+                if (server.getLogEntryIndexInLog(follower.getValue()) != -1) {
+                    for (int i = server.getLogEntryIndexInLog(follower.getValue()); i <= server.getLogEntryIndexInLog(server.getCommitIndex()); i++) {
+                        entries.add(server.getLog().get(i));
+                    }
+                    int prevLogIndex, prevLogTerm;
+                    if (follower.getValue() == 0) {
+                        prevLogIndex = -1;
+                        prevLogTerm = -1;
+                    } else {
+                    prevLogIndex = follower.getValue() - 1;
 //                    prevLogTerm = server.getLog().get(follower.getValue() - 1).getTerm();
-                    prevLogIndex = server.getLastApplied() - 1;
-                    prevLogTerm = server.getCurrentTerm();
+//                        prevLogIndex = server.getLastApplied() - 1;
+                        prevLogTerm = server.getCurrentTerm();
+                    }
+                    ae = new AppendEntry(server.getCurrentTerm(), server.getServerID(), prevLogIndex, prevLogTerm, entries, server.getCommitIndex(), true, null, "APPENDENTRY");
                 }
-                AppendEntry ae = new AppendEntry(server.getCurrentTerm(), server.getServerID(), prevLogIndex, prevLogTerm, entries, server.getCommitIndex(), true, null, "APPENDENTRY");
+                else {
+                    ae = server.getFileHandler().readSnapshotFileToFollower();
+                }
                 followers.get(follower.getKey()).storeAppendEntryInQueue(ae);
             }
         }
