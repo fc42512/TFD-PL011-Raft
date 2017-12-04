@@ -83,7 +83,7 @@ public class Leader implements Runnable {
                 if (server.getLog().isEmpty() || server.getLog().size() == 1) {
                     if (server.getLastApplied() > 0) {
                         prevLogIndex = server.getLastApplied();
-                        prevLogTerm = server.getCurrentTerm();
+                        prevLogTerm = server.getLastIncludedTerm();
                         commitIndex = server.getCommitIndex();
                     } else {
                         prevLogIndex = -1;
@@ -105,12 +105,12 @@ public class Leader implements Runnable {
                     if (rv.isSuccess()) {
                         stopLeader();//paro o líder, pois ele votou favorávelmente a um candidato
                         new Thread(new Follower(server)).start();//inicia-se como follower
-                    } else {
-                        try {
-                            sendRequestVoteToCandidate(rv, server.getServersSockets(ae.getLeaderId()));
-                        } catch (IOException ex) {
-                            System.out.println("Falha no reenvio do requestVote pelo lider" + server.getServerID());
-                        }
+                    }
+                    try {
+                        sendRequestVoteToCandidate(rv, server.getServersSockets(ae.getLeaderId()));
+                    } catch (IOException ex) {
+                        System.out.println("Falha no reenvio do requestVote pelo lider" + server.getServerID());
+
                     }
                 } else if (ae.isSuccess()) {
                     int followerLastApplied = server.getLogEntryIndexInLog(ae.getLeaderCommit());
@@ -170,7 +170,7 @@ public class Leader implements Runnable {
 
     private void resolveConflictingEntries() {
         for (Map.Entry<String, Integer> follower : nextIndex.entrySet()) {
-            if (server.getCommitIndex() >= follower.getValue()) {
+            if (server.getCommitIndex() > follower.getValue()) {
                 ArrayList<LogEntry> entries = new ArrayList<>();
                 AppendEntry ae;
                 if (server.getLogEntryIndexInLog(follower.getValue()) != -1) {
@@ -182,17 +182,20 @@ public class Leader implements Runnable {
                         prevLogIndex = -1;
                         prevLogTerm = -1;
                     } else {
-                    prevLogIndex = follower.getValue() - 1;
-//                    prevLogTerm = server.getLog().get(follower.getValue() - 1).getTerm();
-//                        prevLogIndex = server.getLastApplied() - 1;
-                        prevLogTerm = server.getCurrentTerm();
+                        prevLogIndex = follower.getValue() - 1;
+                        if (server.getLogEntryIndexInLog(follower.getValue() - 1) != -1) {
+                            prevLogTerm = server.getLog().get(server.getLogEntryIndexInLog(follower.getValue() - 1)).getTerm();
+                        } else {
+                            prevLogTerm = server.getLastIncludedTerm();
+                        }
                     }
                     ae = new AppendEntry(server.getCurrentTerm(), server.getServerID(), prevLogIndex, prevLogTerm, entries, server.getCommitIndex(), true, null, "APPENDENTRY");
-                }
-                else {
+                } else {
                     ae = server.getFileHandler().readSnapshotFileToFollower();
                 }
-                followers.get(follower.getKey()).storeAppendEntryInQueue(ae);
+                if (ae != null) {
+                    followers.get(follower.getKey()).storeAppendEntryInQueue(ae);
+                }
             }
         }
     }

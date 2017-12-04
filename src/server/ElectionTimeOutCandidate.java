@@ -58,7 +58,7 @@ public class ElectionTimeOutCandidate {
     /* Gera um número aleatório entre 1500 e 1599 */
     private int getRandomTime() {
         Random rnd = new Random();
-        return rnd.nextInt(100) + 2000;
+        return rnd.nextInt(150) + 2000;
     }
 
 }

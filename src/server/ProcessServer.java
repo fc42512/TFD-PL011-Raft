@@ -35,7 +35,7 @@ public class ProcessServer implements Runnable {
                 if (!stopProcessServer) {
                     AppendEntry ae = (AppendEntry) dis.readObject();
                     processAppendEntry(ae, socket);//executa o método que processa a AppendEntry de outro servidor
-                    System.out.println("Recebida AppendEntry - " + ae.getType() + ". Sou o " + server.getServerID());
+                    System.out.println("Recebida AppendEntry do " + ae.getLeaderId() +" - " + ae.getType() + ". Sou o " + server.getServerID());
                 }
             }
             socket.close();

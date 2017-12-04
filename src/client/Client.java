@@ -75,7 +75,7 @@ public class Client {
             }
         }
         clientRequest.request(request, socket);
-        if(!clientRequest.isFinishedRequest()){
+        while(!clientRequest.isFinishedRequest()){
             connectionAlive = false;
             establishConnection();
             clientRequest.request(request, socket);

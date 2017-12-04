@@ -45,6 +45,7 @@ public class ClientRequest {
         } catch (IOException ex) {
             System.err.println("O servidor contactado pelo cliente " + client.getId() + " deu erro na leitura/escrita!" + ex.getLocalizedMessage());
             isFinishedRequest = false;
+            client.setLeaderID(null);
 
         } catch (ClassNotFoundException ex) {
             System.err.println("Erro na conversão da classe \n" + ex.getLocalizedMessage());

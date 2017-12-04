@@ -69,9 +69,17 @@ public class TalkToFollower implements Runnable {
             } catch (IOException ex) {
                 System.err.println("O servidor contactado pelo " + server.getState() + " " + server.getServerID() + " não está disponível! \n" + ex.getLocalizedMessage());
                 connectionAlive = false;
-                appendEntriesToSend.clear();
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(1000);
+                    LinkedBlockingQueue<AppendEntry> newAppendEntriesToSend = new LinkedBlockingQueue<>();
+                    AppendEntry ae;
+                    for(int i=0; i<appendEntriesToSend.size(); i++){
+                        ae = appendEntriesToSend.remove();
+                        if(ae.getType() == "APPENDENTRY"){
+                            newAppendEntriesToSend.add(ae);
+                        }
+                    }
+                    appendEntriesToSend = newAppendEntriesToSend;
                 } catch (InterruptedException ex1) {
                     System.err.println("O servidor contactado pelo " + server.getState() + " " + server.getServerID() + " não está disponível! Estou à espera!!!\n" + ex1.getLocalizedMessage());
                 }

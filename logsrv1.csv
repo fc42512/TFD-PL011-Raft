@@ -1,0 +1,3 @@
+3;1;PUT;CL1-KEY;1;CL1-RQ0;1;1;true;false;
+3;2;GET;CL1-KEY;0;CL1-RQ1;1;1;true;false;
+3;3;LIST;CL1-KEY;0;CL1-RQ2;1;1;true;false;

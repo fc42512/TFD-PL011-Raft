@@ -10,7 +10,9 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Objects;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  *
@@ -44,7 +46,16 @@ public class Candidate implements Runnable {
         server.resetThreadLeader();
         server.resetThreadFollower();
         int numServers = server.getServersProps().getHashMapProperties().size() / 2;
-        server.getServerQueue().clear();//limpa a fila de AppendEntry recebidas
+        LinkedBlockingQueue<AppendEntry> newServerQueue = new LinkedBlockingQueue<>();
+        AppendEntry auxAae;
+        for (int i = 0; i < server.getServerQueue().size(); i++) {
+            auxAae = server.getServerQueue().remove();
+            if (auxAae.getType() == "REQUESTVOTE") {
+                newServerQueue.add(auxAae);
+            }
+        }
+        server.setServerQueue(newServerQueue);
+//        server.getServerQueue().clear();//limpa a fila de AppendEntry recebidas
         createTalkToOtherServers(createRequestVote());
         electionTimeOut.cancelElectionTimer();
         electionTimeOut.run();
@@ -54,22 +65,30 @@ public class Candidate implements Runnable {
             if (!server.getServerQueue().isEmpty() && !finishedElection && !stopCandidate) {
                 if (!stopCandidate) {
                     AppendEntry ae = server.getServerQueue().remove();
+                    electionTimeOut.cancelElectionTimer();
                     if (Objects.equals(ae.getType(), "REQUESTVOTE")) {
                         //Se votar a favor
                         if (ae.isSuccess()) {
                             voteCounter++;
                             removeTalkToOtherServers(ae.getLeaderId());
+                        } else if (server.getServersSockets(ae.getLeaderId()) != null) {
+                            AppendEntry r = new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, 0, false, null, "REQUESTVOTE");
+                            try {
+                                sendAppendEntryToServer(r, server.getServersSockets(ae.getLeaderId()));
+                            } catch (IOException ex) {
+                                System.err.println(server.getServerID() + " - Erro no estabelecimento da ligação com o servidor \n" + ex.getLocalizedMessage());
+                            }
                         }
 
-                    } else if (Objects.equals(ae.getType(), "HEARTBEAT") || Objects.equals(ae.getType(), "APPENDENTRY") || Objects.equals(ae.getType(), "REQUESTVOTE")) {
-                        if (ae.getTerm() > server.getCurrentTerm()) {
+                    } else if (Objects.equals(ae.getType(), "HEARTBEAT") || Objects.equals(ae.getType(), "APPENDENTRY")) {
+                        if (ae.getTerm() >= server.getCurrentTerm()) {
                             electionTimeOut.cancelElectionTimer();
                             server.setState("FOLLOWER");// Candidate volta ao estado de Follower
                             stopCandidate();
                             this.startLeaderOrFollower = true;
-                            AppendEntry hr = new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, server.getLastApplied(), false, null, "HEARTBEAT");
+                            AppendEntry r = new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, server.getLastApplied(), false, null, "HEARTBEAT");
                             try {
-                                sendAppendEntryToServer(hr, server.getServersSockets(ae.getLeaderId()));
+                                sendAppendEntryToServer(r, server.getServersSockets(ae.getLeaderId()));
                             } catch (IOException ex) {
                                 System.err.println(server.getServerID() + " - Erro no estabelecimento da ligação com o servidor \n" + ex.getLocalizedMessage());
                             }
@@ -100,7 +119,7 @@ public class Candidate implements Runnable {
         for (int i = 0; i < server.getServersProps().getHashMapProperties().size(); i++) {
             serverToTalk = "srv" + i;
             if (!server.getServerID().equals(serverToTalk)) {
-                RequestVote rv = new RequestVote(server, Integer.parseInt(server.getServersProps().getServerAdress(serverToTalk)[1]), ae, serverToTalk);
+                RequestVote rv = new RequestVote(server, server.getServersProps().getServerAdress(serverToTalk), ae, serverToTalk);
                 talkToOtherServers.add(rv);
                 new Thread(rv).start();
             }

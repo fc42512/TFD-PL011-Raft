@@ -18,13 +18,13 @@ public class RequestVote implements Runnable {
 
     private Server server;
     private String id;
-    private int otherServerPort;
+    private String[] otherServerAddress;
     private AppendEntry requestVote;
     private boolean isFinished;
 
-    public RequestVote(Server server, int otherServerPort, AppendEntry requestVote, String id) {
+    public RequestVote(Server server, String[] otherServerAddress, AppendEntry requestVote, String id) {
         this.server = server;
-        this.otherServerPort = otherServerPort;
+        this.otherServerAddress = otherServerAddress;
         this.requestVote = requestVote;
         this.id = id;
         this.isFinished = false;
@@ -38,7 +38,7 @@ public class RequestVote implements Runnable {
 
         while (!isFinished) {
             try {
-                socket = new Socket("localhost", otherServerPort);
+                socket = new Socket(otherServerAddress[0], Integer.parseInt(otherServerAddress[1]));
                 oos = new ObjectOutputStream(socket.getOutputStream());
                 oos.writeObject(requestVote);
                 oos.flush();

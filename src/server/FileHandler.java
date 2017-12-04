@@ -111,7 +111,7 @@ public class FileHandler {
                 if (isFirstLine) {
                     splittedLine = line.split(";");
                     server.setLastApplied(Integer.valueOf(splittedLine[0]));
-                    server.setCurrentTerm(Integer.valueOf(splittedLine[1]));
+                    server.setLastIncludedTerm(Integer.valueOf(splittedLine[1]));
                     server.setID_MESSAGE(Integer.valueOf(splittedLine[2]));
                     isFirstLine = false;
                 } else {

@@ -9,6 +9,7 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
 
@@ -88,10 +89,16 @@ public class Follower implements Runnable {
             /* Verifica se o AppendEntry é do tipo HeartBeat */
             if (Objects.equals(ae.getType(), "HEARTBEAT")) {
                 System.out.println("Recebi heartbeat :)");
+                if(stopFollower){
+                    stopFollower = false;
+                    startCandidate = false;
+                }
                 this.server.resetVotedFor();
                 server.setCommitIndex(ae.getLeaderCommit());
-                if (server.getLog().size() > 1) {
-                    server.applyNewEntries();
+                if (server.getLog().size() > 0 && ae.getLeaderCommit() > 0) {
+                    if (server.getLastApplied() < server.getLog().getLast().getIndex() ) {
+                        server.applyNewEntries();
+                    }
                 }
                 return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, server.getLastApplied(), false, null, "HEARTBEAT");
 
@@ -119,11 +126,11 @@ public class Follower implements Runnable {
 //                        deleteConflictEntries(ae.getPrevLogIndex());
                         addNewLogEntries(ae);
                         server.applyNewEntries();
-                        return new AppendEntry(server.getCurrentTerm(), server.getServerID(), ae.getPrevLogIndex() + ae.getEntries().size(), ae.getPrevLogTerm(), null, server.getLastApplied(), true, ae.getMessage(), "APPENDENTRY");
+                        return new AppendEntry(server.getCurrentTerm(), server.getServerID(), ae.getPrevLogIndex() + ae.getEntries().size(), ae.getPrevLogTerm(), null, server.getLog().getLast().getIndex(), true, ae.getMessage(), "APPENDENTRY");
                     } else if (ae.getPrevLogIndex() == -1) {
                         addNewLogEntries(ae);
                         server.applyNewEntries();
-                        return new AppendEntry(server.getCurrentTerm(), server.getServerID(), ae.getPrevLogIndex() + ae.getEntries().size(), ae.getPrevLogTerm(), null, server.getLastApplied(), true, ae.getMessage(), "APPENDENTRY");
+                        return new AppendEntry(server.getCurrentTerm(), server.getServerID(), ae.getPrevLogIndex() + ae.getEntries().size(), ae.getPrevLogTerm(), null, server.getLog().getLast().getIndex(), true, ae.getMessage(), "APPENDENTRY");
 
                     }
                 } else if (ae.getPrevLogIndex() == -1) {
@@ -132,19 +139,18 @@ public class Follower implements Runnable {
                     }
                     addNewLogEntries(ae);
 //                        server.applyNewEntries();
-                    return new AppendEntry(server.getCurrentTerm(), server.getServerID(), ae.getPrevLogIndex() + ae.getEntries().size(), ae.getPrevLogTerm(), null, server.getLastApplied(), true, ae.getMessage(), "APPENDENTRY");
+                    return new AppendEntry(server.getCurrentTerm(), server.getServerID(), ae.getPrevLogIndex() + ae.getEntries().size(), ae.getPrevLogTerm(), null, server.getLog().getLast().getIndex(), true, ae.getMessage(), "APPENDENTRY");
                 } else {
                     return new AppendEntry(server.getCurrentTerm(), server.getServerID(), 0, 0, null, -1, false, ae.getMessage(), "APPENDENTRY");
                 }
-            }
-            else{
+            } else {
                 server.setCurrentTerm(ae.getTerm());
                 server.setLeaderID(ae.getLeaderId());
                 server.setLastApplied(ae.getPrevLogIndex());
-                
-                String [] s = ae.getType().split(";");
-                for (int i = 0; i < s.length; i=i+2) {
-                    server.getKeyValueStore().put(s[i], s[i+1]);
+
+                String[] s = ae.getType().split(";");
+                for (int i = 0; i < s.length; i = i + 2) {
+                    server.getKeyValueStore().put(s[i], s[i + 1]);
                 }
             }
         }
@@ -153,6 +159,7 @@ public class Follower implements Runnable {
 
     private void addNewLogEntries(AppendEntry ae) {
         for (LogEntry le : ae.getEntries()) {
+            le.setCommited(false);
             server.appendLogEntry(le);
         }
         server.setCurrentTerm(ae.getTerm());
@@ -160,17 +167,25 @@ public class Follower implements Runnable {
     }
 
     private void deleteConflictEntries(int index) {
-        int maxIndex = server.getLog().size() - 1;
-        for (int i = maxIndex; i > index; i--) {
-            server.getLog().remove(i);
+        LinkedList<LogEntry> newLog = new LinkedList<>();
+        for (int i = 0; i < server.getLog().size(); i++) {
+            if (server.getLog().get(i).getIndex() <= index) {
+                newLog.add(server.getLog().get(i));
+            }
         }
+        server.setLog(newLog);
+
+//        int maxIndex = server.getLog().size() - 1;
+//        for (int i = maxIndex; i > index; i--) {
+//            server.getLog().remove(i);
+//        }
     }
 
     public void stopFollower() {
         this.stopFollower = true;
-        if (server.getProcessServer() != null) {
-            server.getProcessServer().stopProcessServer();
-        }
+//        if (server.getProcessServer() != null) {
+//            server.getProcessServer().stopProcessServer();
+//        }
     }
 
     public void activateStartCandidate() {

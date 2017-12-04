@@ -44,6 +44,7 @@ public class Server implements Runnable {
     private LinkedList<LogEntry> log;
     private int commitIndex;//indice do último log entry commitado
     private int lastApplied;//indice do último log entry executado pela máquina de estados
+    private int lastIncludedTerm;
 
     private LinkedBlockingQueue<Message> clientQueue;
     private LinkedBlockingQueue<AppendEntry> serverQueue;
@@ -69,6 +70,7 @@ public class Server implements Runnable {
         this.log = new LinkedList<LogEntry>();
         this.commitIndex = 0;
         this.lastApplied = 0;
+        this.lastIncludedTerm = 0;
 
         clientQueue = new LinkedBlockingQueue<>();
         serverQueue = new LinkedBlockingQueue<>();
@@ -199,8 +201,20 @@ public class Server implements Runnable {
         return lastApplied;
     }
 
+    public int getLastIncludedTerm() {
+        return lastIncludedTerm;
+    }
+
+    public void setLastIncludedTerm(int lastIncludedTerm) {
+        this.lastIncludedTerm = lastIncludedTerm;
+    }
+
     public LinkedList<LogEntry> getLog() {
         return log;
+    }
+
+    public void setLog(LinkedList<LogEntry> log) {
+        this.log = log;
     }
 
     public HashMap<String, Message> getStateMachine() {
@@ -229,6 +243,10 @@ public class Server implements Runnable {
 
     public LinkedBlockingQueue<AppendEntry> getServerQueue() {
         return serverQueue;
+    }
+
+    public void setServerQueue(LinkedBlockingQueue<AppendEntry> serverQueue) {
+        this.serverQueue = serverQueue;
     }
 
     public ProcessClient getProcessClientSocket(int id) {
@@ -375,7 +393,9 @@ public class Server implements Runnable {
             aux = lastApplied;
         }
         for (int i = aux; i <= commitIndex; i++) {
-            execute(log.get(getLogEntryIndexInLog(i)));
+            if (!log.get(getLogEntryIndexInLog(i)).isCommited()) {
+                execute(log.get(getLogEntryIndexInLog(i)));
+            }
         }
         lastApplied = commitIndex;
     }
@@ -424,23 +444,25 @@ public class Server implements Runnable {
         if (log.isEmpty() || log.size() == 1) {
             if (lastApplied > 0) {
                 lastLogIndex = lastApplied;
-                lastLogTerm = currentTerm;
+                lastLogTerm = lastIncludedTerm;
             } else {
                 lastLogIndex = -1;
                 lastLogTerm = -1;
             }
         } else {
-            lastLogIndex = log.get(log.size() - 2).getIndex();
-            lastLogTerm = log.get(log.size() - 2).getTerm();
+            lastLogIndex = log.getLast().getIndex();
+            lastLogTerm = log.getLast().getTerm();
+//            lastLogIndex = log.get(log.size() - 2).getIndex();
+//            lastLogTerm = log.get(log.size() - 2).getTerm();
         }
 
         if (ae.getTerm() < getCurrentTerm()) {
             rv = new AppendEntry(getCurrentTerm(), getServerID(), 0, 0, null, 0, false, null, "REQUESTVOTE");
         } else if (getVotedFor() == null || Objects.equals(getVotedFor(), ae.getLeaderId())) {
-            if (lastLogTerm > ae.getPrevLogTerm()) {
+            if (ae.getPrevLogTerm() < lastLogTerm) {
                 rv = new AppendEntry(getCurrentTerm(), getServerID(), 0, 0, null, 0, false, null, "REQUESTVOTE");
             } else if (lastLogTerm == ae.getPrevLogTerm()) {
-                if (lastLogIndex > ae.getPrevLogIndex()) {
+                if (ae.getPrevLogIndex() < lastLogIndex) {
                     rv = new AppendEntry(getCurrentTerm(), getServerID(), 0, 0, null, 0, false, null, "REQUESTVOTE");
                 } else {
                     rv = new AppendEntry(getCurrentTerm(), getServerID(), 0, 0, null, 0, true, null, "REQUESTVOTE");
@@ -450,6 +472,8 @@ public class Server implements Runnable {
                 rv = new AppendEntry(getCurrentTerm(), getServerID(), 0, 0, null, 0, true, null, "REQUESTVOTE");
                 setVotedFor(ae.getLeaderId());
             }
+        } else {
+            rv = new AppendEntry(getCurrentTerm(), getServerID(), 0, 0, null, 0, false, null, "REQUESTVOTE");
         }
         return rv;
     }
@@ -460,10 +484,10 @@ public class Server implements Runnable {
         snapshot += getIDMESSAGE() + "\n";
         snapshot += keyValueStore.getStateMachineState();
 
-//        if (fileHandler.deleteSnapshotFile()) {
         fileHandler.deleteSnapshotFile();
         fileHandler.writeToFile(snapshot, true);
         fileHandler.clearLogFile();
+        lastIncludedTerm = log.get(getLogEntryIndexInLog(lastApplied)).getTerm();
         LinkedList<LogEntry> newLog = new LinkedList<>();
         for (int i = 0; i < log.size(); i++) {
             if (log.get(i).getIndex() > lastApplied) {
@@ -471,11 +495,11 @@ public class Server implements Runnable {
             }
         }
         log = newLog;
-//        }
     }
 
     private void installSnapshot() {
         fileHandler.readSnapshotFile();
+        currentTerm = lastIncludedTerm;
     }
 
     private void loadLog() {
@@ -483,10 +507,16 @@ public class Server implements Runnable {
         for (LogEntry l : log) {
             if (l.isCommited()) {
                 commitIndex = l.getIndex();
+                currentTerm = l.getTerm();
+                String executionResult = executeOperationOnKeyValueStore(l);
+                Message m = new Message(l.getIdMessage(), l.getSource(), "RESPONSE", l.getOperationType(), l.getKey(), executionResult + "\nSucesso - atribuído o ID " + getIDMESSAGE());
+                stateMachine.put(l.getIdMessage() + l.getSource(), m);
+                ID_MESSAGE++;
             } else {
                 break;
             }
         }
+        lastApplied = commitIndex;
     }
 
     private int getLastAppliedTerm() {
